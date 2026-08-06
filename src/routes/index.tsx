@@ -305,14 +305,217 @@ function TasksView({ tasks, onTaskStatus }: { tasks: Task[]; onTaskStatus: (id: 
   return <div className="space-y-7"><PageIntro eyebrow="Planejamento" title="Tarefas" description="Uma visão simples do que já foi feito e do próximo passo da festa." action={<Button><Plus />Nova tarefa</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={ClipboardCheck} label="Concluídas" value={`${tasks.filter((task) => task.status === "Concluído").length}`} detail="tarefas finalizadas" tone="rose" onClick={() => setFilter("Concluído")} /><Metric icon={Clock3} label="Em andamento" value={`${tasks.filter((task) => task.status === "Em andamento").length}`} detail="precisam de atenção" tone="gold" onClick={() => setFilter("Em andamento")} /><Metric icon={Bell} label="Aguardando" value={`${tasks.filter((task) => task.status === "Aguardando").length}`} detail="dependem de uma ação" tone="sage" onClick={() => setFilter("Aguardando")} /></div><section className="rounded-xl border border-border bg-card p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} tarefas exibidas</span></div><div className="mt-5">{filtered.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section></div>;
 }
 
-function GuestsView({ guests, search, setSearch, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus }: { guests: Guest[]; search: string; setSearch: (value: string) => void; showForm: boolean; setShowForm: (value: boolean) => void; newGuest: string; setNewGuest: (value: string) => void; addGuest: () => void; onStatus: (id: number, status: GuestStatus) => void }) {
-  const stats = [{ label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length }, { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length }, { label: "Não confirmados", value: guests.filter((guest) => guest.status === "Não confirmado").length }, { label: "Convites físicos", value: guests.filter((guest) => guest.physical).length }];
-  return <div className="space-y-7"><PageIntro eyebrow="Pessoas especiais" title="Convidados" description="A lista foi normalizada a partir do arquivo enviado. Complete os detalhes conforme as confirmações chegarem." action={<Button onClick={() => setShowForm(!showForm)}>{showForm ? <X /> : <Plus />}{showForm ? "Fechar" : "Adicionar convidado"}</Button>} />{showForm && <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row"><Input autoFocus value={newGuest} onChange={(event) => setNewGuest(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addGuest()} placeholder="Nome do convidado" /><Button onClick={addGuest}>Adicionar</Button></div>}<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map((stat, index) => <div key={stat.label} className="rounded-xl border border-border bg-card p-4"><div className="text-xs text-muted-foreground">{stat.label}</div><div className="mt-2 font-serif text-3xl">{stat.value}</div><div className="mt-1 text-[11px] text-muted-foreground">da lista importada</div></div>)}</div><section className="overflow-hidden rounded-xl border border-border bg-card"><div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div><h2 className="font-serif text-2xl">Lista de convidados</h2><p className="mt-1 text-xs text-muted-foreground">{guests.length} registros visíveis nesta busca</p></div><div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Buscar nome..." /></div></div><div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Convidado</th><th className="px-4 py-3 font-semibold">Família</th><th className="px-4 py-3 font-semibold">Convites</th><th className="px-4 py-3 font-semibold">Envio pessoal</th><th className="px-6 py-3 font-semibold">Confirmação</th></tr></thead><tbody>{guests.map((guest) => <GuestTableRow key={guest.id} guest={guest} onStatus={onStatus} />)}</tbody></table></div><div className="divide-y divide-border md:hidden">{guests.map((guest) => <GuestMobileRow key={guest.id} guest={guest} onStatus={onStatus} />)}</div></section></div>;
+type GuestsViewProps = {
+  guests: Guest[];
+  allGuests: Guest[];
+  search: string;
+  setSearch: (value: string) => void;
+  hostFilter: string;
+  setHostFilter: (value: string) => void;
+  showForm: boolean;
+  setShowForm: (value: boolean) => void;
+  newGuest: string;
+  setNewGuest: (value: string) => void;
+  addGuest: () => void;
+  onStatus: (id: number, status: GuestStatus) => void;
+  onUpdate: (id: number, patch: Partial<Guest>) => void;
+  onFamilyHost: (family: string, host: string) => void;
+};
+
+function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost }: GuestsViewProps) {
+  const familyOptions = useMemo(
+    () => Array.from(new Set(allGuests.filter((guest) => guest.family).map((guest) => guest.family))).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [allGuests],
+  );
+
+  const sections = useMemo(() => {
+    const groups = [...hosts, "Sem responsável"];
+    return groups
+      .map((host) => {
+        const people = guests.filter((guest) => (host === "Sem responsável" ? !guest.host : guest.host === host));
+        const families = Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
+          .sort((a, b) => a.localeCompare(b, "pt-BR"))
+          .map((family) => ({
+            family,
+            principal: people.find((guest) => guest.name === family),
+            members: people.filter((guest) => guest.family === family && guest.name !== family),
+          }));
+        const singles = people.filter((guest) => !guest.family);
+        return { host, people, families, singles };
+      })
+      .filter((section) => section.people.length > 0);
+  }, [guests]);
+
+  const stats = [
+    { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
+    { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
+    { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
+    { label: "Grupos familiares", value: familyOptions.length },
+  ];
+
+  return (
+    <div className="space-y-7">
+      <PageIntro
+        eyebrow="Pessoas especiais"
+        title="Convidados"
+        description="A lista está segmentada por responsável pelo convite e agrupada por família. Escolha o responsável de quem ainda estiver sem e confirme pessoa por pessoa."
+        action={<Button onClick={() => setShowForm(!showForm)}>{showForm ? <X /> : <Plus />}{showForm ? "Fechar" : "Adicionar convidado"}</Button>}
+      />
+      {showForm && (
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row">
+          <Input autoFocus value={newGuest} onChange={(event) => setNewGuest(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addGuest()} placeholder="Nome do convidado" />
+          <Button onClick={addGuest}>Adicionar</Button>
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
+            <div className="text-xs text-muted-foreground">{stat.label}</div>
+            <div className="mt-2 font-serif text-3xl">{stat.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex flex-wrap gap-2">
+          {["Todos", ...hosts, "Sem responsável"].map((option) => (
+            <button
+              key={option}
+              onClick={() => setHostFilter(option)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${hostFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Buscar nome..." />
+        </div>
+      </div>
+
+      {sections.map((section) => (
+        <section key={section.host} className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsável pelos convites</div>
+              <h2 className="mt-1 font-serif text-2xl">{section.host}</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <Badge variant="secondary" className="text-[10px]">{section.people.length} convidados</Badge>
+              <Badge variant="outline" className="text-[10px]">{section.people.filter((guest) => guest.status === "Confirmado").length} confirmados</Badge>
+              <Badge variant="outline" className="text-[10px]">{section.families.length} famílias</Badge>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 sm:p-5">
+            {section.families.map(({ family, principal, members }) => (
+              <div key={family} className="rounded-xl border border-primary/20 bg-primary/[0.04]">
+                <div className="flex flex-col gap-3 border-b border-primary/15 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-primary">Família · principal</div>
+                    <div className="mt-1 font-medium">{family}</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    Responsável da família
+                    <select
+                      aria-label={`Responsável da família ${family}`}
+                      value={principal?.host ?? section.people.find((guest) => guest.family === family)?.host ?? ""}
+                      onChange={(event) => onFamilyHost(family, event.target.value)}
+                      className="rounded-md border border-border bg-background px-2 py-1.5 text-[11px] font-medium text-foreground outline-none"
+                    >
+                      <option value="">Sem responsável</option>
+                      {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div className="divide-y divide-border">
+                  {principal && <GuestRow guest={principal} isPrincipal families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
+                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
+                </div>
+              </div>
+            ))}
+
+            {section.singles.length > 0 && (
+              <div className="rounded-xl border border-border">
+                <div className="border-b border-border px-4 py-3 text-[10px] uppercase tracking-wider text-muted-foreground">Convidados individuais</div>
+                <div className="divide-y divide-border">
+                  {section.singles.map((guest) => <GuestRow key={guest.id} guest={guest} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+
+      {sections.length === 0 && <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">Nenhum convidado encontrado com esses filtros.</div>}
+    </div>
+  );
 }
 
-function GuestTableRow({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) { return <tr className="border-t border-border transition hover:bg-muted/25"><td className="px-6 py-4"><div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{guest.name.charAt(0)}</span><div><div className="font-medium">{guest.name}{guest.age && <span className="ml-1 text-xs text-muted-foreground">({guest.age})</span>}</div><div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div></div></div></td><td className="px-4 py-4 text-xs text-muted-foreground">{guest.family || "—"}</td><td className="px-4 py-4"><div className="flex gap-1"><span className={`grid size-6 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/35"}`} title="Convite virtual"><Send className="size-3" /></span><span className={`grid size-6 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/35"}`} title="Convite físico"><Gift className="size-3" /></span></div></td><td className="px-4 py-4">{guest.personal ? <Badge variant="secondary" className="text-[10px]">Enviado</Badge> : <span className="text-xs text-muted-foreground">Pendente</span>}</td><td className="px-6 py-4"><GuestStatusSelect guest={guest} onStatus={onStatus} /></td></tr>; }
-function GuestMobileRow({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) { return <div className="p-4"><div className="flex items-start gap-3"><span className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{guest.name.charAt(0)}</span><div className="min-w-0 flex-1"><div className="font-medium">{guest.name}</div><div className="mt-1 text-[11px] text-muted-foreground">{guest.family || "Família não identificada"} · #{String(guest.id).padStart(3, "0")}</div><div className="mt-3 flex items-center justify-between"><div className="flex gap-1"><span className={`rounded-md px-2 py-1 text-[10px] ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>Virtual {guest.virtual ? "✓" : "—"}</span><span className={`rounded-md px-2 py-1 text-[10px] ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}>Físico {guest.physical ? "✓" : "—"}</span></div><GuestStatusSelect guest={guest} onStatus={onStatus} /></div></div></div></div>; }
-function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) { return <select aria-label={`Status de ${guest.name}`} value={guest.status} onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)} className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted text-muted-foreground"}`}><option>Confirmado</option><option>Aguardando</option><option>Não confirmado</option></select>; }
+function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
+  return (
+    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${isPrincipal ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{guest.name.charAt(0)}</span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{guest.name}</span>
+            {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
+            {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-1">
+          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+        </div>
+
+        <select
+          aria-label={`Família de ${guest.name}`}
+          value={guest.family}
+          onChange={(event) => onUpdate(guest.id, { family: event.target.value === "__self" ? guest.name : event.target.value })}
+          className="max-w-[190px] rounded-md border border-border bg-background px-2 py-1.5 text-[11px] outline-none"
+        >
+          <option value="">Sem família</option>
+          <option value="__self">Tornar principal de família</option>
+          {families.map((family) => <option key={family} value={family}>{family}</option>)}
+        </select>
+
+        <select
+          aria-label={`Responsável por ${guest.name}`}
+          value={guest.host}
+          onChange={(event) => onUpdate(guest.id, { host: event.target.value })}
+          className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.host ? "border-border bg-background" : "border-dashed border-primary/50 bg-primary/5 text-primary"}`}
+        >
+          <option value="">Escolher responsável</option>
+          {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
+        </select>
+
+        <GuestStatusSelect guest={guest} onStatus={onStatus} />
+      </div>
+    </div>
+  );
+}
+
+function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) {
+  return (
+    <select
+      aria-label={`Confirmação de ${guest.name}`}
+      value={guest.status}
+      onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
+      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted text-muted-foreground"}`}
+    >
+      <option>Confirmado</option>
+      <option>Aguardando</option>
+      <option>Não confirmado</option>
+    </select>
+  );
+}
 
 function SuppliersView() { return <div className="space-y-7"><PageIntro eyebrow="Parceiros da festa" title="Fornecedores" description="Acompanhe contratos, valores e o que ainda precisa ser fechado." action={<Button><Plus />Adicionar fornecedor</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={Store} label="Contratados" value="3" detail="de 8 fornecedores" tone="rose" onClick={() => undefined} /><Metric icon={CircleDollarSign} label="Valor contratado" value="R$ 49.100" detail="soma dos contratos" tone="gold" onClick={() => undefined} /><Metric icon={Clock3} label="A contratar" value="4" detail="precisam de orçamento" tone="sage" onClick={() => undefined} /></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{suppliers.map(({ name, status, value, paid, due, icon: Icon }) => <div key={name} className="rounded-xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between"><span className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground"><Icon className="size-4" /></span><MoreHorizontal className="size-4 text-muted-foreground" /></div><div className="mt-5 font-medium">{name}</div><Badge variant={status === "Contratado" ? "secondary" : status === "Em negociação" ? "default" : "outline"} className="mt-2 text-[10px]">{status}</Badge><div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(value)}</span></div><div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(value - paid)}</span></div><div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {due}</div></div>)}</section></div>; }
 
