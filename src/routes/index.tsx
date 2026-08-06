@@ -202,6 +202,18 @@ function FestaApp() {
     setTasks((current) => current.map((task) => task.id === id ? { ...task, status: task.status === "Concluído" ? "Em andamento" : "Concluído" } : task));
   };
 
+  const addTask = (task: Omit<Task, "id">) => {
+    setTasks((current) => [...current, { ...task, id: Math.max(0, ...current.map((item) => item.id)) + 1 }]);
+  };
+
+  const updateTask = (id: number, patch: Partial<Task>) => {
+    setTasks((current) => current.map((task) => task.id === id ? { ...task, ...patch } : task));
+  };
+
+  const deleteTask = (id: number) => {
+    setTasks((current) => current.filter((task) => task.id !== id && task.parent !== id));
+  };
+
   const changeGuestStatus = (id: number, status: GuestStatus) => {
     setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, status } : guest));
   };
@@ -269,7 +281,7 @@ function FestaApp() {
 
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
-          {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} />}
+          {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
           {view === "suppliers" && <SuppliersView />}
           {view === "finance" && <FinanceView />}
