@@ -158,11 +158,11 @@ function FestaApp() {
 
   useEffect(() => {
     let active = true;
-    loadMirellaState<Task, Guest>()
+    loadMirellaState()
       .then((state) => {
         if (!active || !state) return;
-        if (state.tasks?.length) setTasks(state.tasks);
-        if (state.guests?.length) setGuests(state.guests);
+        if (state.tasks?.length) setTasks(state.tasks as Task[]);
+        if (state.guests?.length) setGuests(state.guests as Guest[]);
       })
       .finally(() => {
         if (active) setLoaded(true);
