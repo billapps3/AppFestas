@@ -73,6 +73,9 @@ type Guest = {
   family: string;
   host: string;
   child: boolean;
+  virtualDate?: string;
+  physicalDate?: string;
+  confirmDue?: string;
 };
 
 const hosts = ["William", "Késya", "Mirella"];
@@ -379,17 +382,18 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
 
   const sections = useMemo(() => {
     const groups = [...hosts, "Sem responsável"];
+    const byCode = (a: Guest, b: Guest) => a.id - b.id;
     return groups
       .map((host) => {
-        const people = guests.filter((guest) => (host === "Sem responsável" ? !guest.host : guest.host === host));
+        const people = guests.filter((guest) => (host === "Sem responsável" ? !guest.host : guest.host === host)).sort(byCode);
         const families = Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
           .sort((a, b) => a.localeCompare(b, "pt-BR"))
           .map((family) => ({
             family,
             principal: people.find((guest) => guest.name === family),
-            members: people.filter((guest) => guest.family === family && guest.name !== family),
+            members: people.filter((guest) => guest.family === family && guest.name !== family).sort(byCode),
           }));
-        const singles = people.filter((guest) => !guest.family);
+        const singles = people.filter((guest) => !guest.family).sort(byCode);
         return { host, people, families, singles };
       })
       .filter((section) => section.people.length > 0);
@@ -505,7 +509,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
 
 function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
   return (
-    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${isPrincipal ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{guest.name.charAt(0)}</span>
         <div className="min-w-0">
@@ -521,8 +525,8 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1">
-          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual enviado" aria-label={`Convite virtual de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
-          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico entregue" aria-label={`Convite físico de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualDate: "" } : { virtual: true, virtualDate: guest.virtualDate || today() })} title="Convite virtual enviado" aria-label={`Convite virtual de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, guest.physical ? { physical: false, physicalDate: "" } : { physical: true, physicalDate: guest.physicalDate || today() })} title="Convite físico entregue" aria-label={`Convite físico de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
           <button onClick={() => onUpdate(guest.id, { child: !guest.child })} title="Criança até 10 anos (não pagante)" aria-label={`Criança não pagante: ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
@@ -549,8 +553,31 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
         <GuestStatusSelect guest={guest} onStatus={onStatus} />
       </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground lg:basis-full lg:pl-12">
+        {guest.virtual && (
+          <label className="flex items-center gap-1.5">
+            <Send className="size-3 text-primary" />Enviado em
+            <input type="date" aria-label={`Data de envio do convite virtual de ${guest.name}`} value={guest.virtualDate ?? ""} onChange={(event) => onUpdate(guest.id, { virtualDate: event.target.value })} className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground outline-none" />
+          </label>
+        )}
+        {guest.physical && (
+          <label className="flex items-center gap-1.5">
+            <Gift className="size-3 text-primary" />Entregue em
+            <input type="date" aria-label={`Data de entrega do convite físico de ${guest.name}`} value={guest.physicalDate ?? ""} onChange={(event) => onUpdate(guest.id, { physicalDate: event.target.value })} className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground outline-none" />
+          </label>
+        )}
+        <label className="flex items-center gap-1.5">
+          <CalendarDays className="size-3 text-primary" />Confirmar até
+          <input type="date" aria-label={`Data prevista de confirmação de ${guest.name}`} value={guest.confirmDue ?? ""} onChange={(event) => onUpdate(guest.id, { confirmDue: event.target.value })} className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground outline-none" />
+        </label>
+      </div>
     </div>
   );
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) {
