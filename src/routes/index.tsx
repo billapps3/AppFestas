@@ -72,13 +72,7 @@ type Guest = {
   personal: boolean;
   family: string;
   host: string;
-  child?: boolean;
 };
-
-// Criança de até 10 anos não é pagante. Quando ainda não foi marcada manualmente,
-// usamos a idade importada como sugestão — nada é gravado até você alterar.
-const isChild = (guest: Guest) => guest.child ?? (guest.age !== undefined && guest.age <= 10);
-const INVITE_TARGET = 110;
 
 const hosts = ["William", "Késya", "Mirella"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
@@ -369,18 +363,11 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
       .filter((section) => section.people.length > 0);
   }, [guests]);
 
-  const payingAll = allGuests.filter((guest) => !isChild(guest));
-  const declined = payingAll.filter((guest) => guest.status === "Não confirmado").length;
-  const totalGuests = payingAll.length - declined;
-  const confirmed = payingAll.filter((guest) => guest.status === "Confirmado").length;
-  const children = allGuests.filter((guest) => isChild(guest)).length;
-  const percent = Math.round((totalGuests / INVITE_TARGET) * 100);
-
   const stats = [
-    { label: "Total de convidados", value: totalGuests, detail: `pagantes · ${children} criança(s) até 10 anos fora da conta` },
-    { label: "Confirmados", value: confirmed, detail: `${payingAll.filter((guest) => guest.status === "Aguardando").length} aguardando resposta` },
-    { label: "Declinados", value: declined, detail: "já descontados do total" },
-    { label: `${percent}% de 110 convites`, value: `${totalGuests}/${INVITE_TARGET}`, detail: totalGuests > INVITE_TARGET ? `${totalGuests - INVITE_TARGET} acima do limite` : `${INVITE_TARGET - totalGuests} vaga(s) disponível(is)` },
+    { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
+    { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
+    { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
+    { label: "Grupos familiares", value: familyOptions.length },
   ];
 
   return (
@@ -402,12 +389,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">{stat.label}</div>
             <div className="mt-2 font-serif text-3xl">{stat.value}</div>
-            {"detail" in stat && <div className="mt-1 text-[11px] text-muted-foreground">{stat.detail}</div>}
           </div>
         ))}
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, percent)}%` }} />
       </div>
 
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -498,7 +481,6 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
-            {isChild(guest) && <Badge variant="secondary" className="text-[9px]">Criança · não pagante</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
         </div>
@@ -509,14 +491,6 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
           <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
           <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
         </div>
-
-        <button
-          onClick={() => onUpdate(guest.id, { child: !isChild(guest) })}
-          title="Criança de até 10 anos (não pagante)"
-          className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${isChild(guest) ? "border-primary/25 bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"}`}
-        >
-          Criança até 10
-        </button>
 
         <select
           aria-label={`Família de ${guest.name}`}
