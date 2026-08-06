@@ -369,11 +369,18 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
       .filter((section) => section.people.length > 0);
   }, [guests]);
 
+  const payingAll = allGuests.filter((guest) => !isChild(guest));
+  const declined = payingAll.filter((guest) => guest.status === "Não confirmado").length;
+  const totalGuests = payingAll.length - declined;
+  const confirmed = payingAll.filter((guest) => guest.status === "Confirmado").length;
+  const children = allGuests.filter((guest) => isChild(guest)).length;
+  const percent = Math.round((totalGuests / INVITE_TARGET) * 100);
+
   const stats = [
-    { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
-    { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
-    { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Grupos familiares", value: familyOptions.length },
+    { label: "Total de convidados", value: totalGuests, detail: `pagantes · ${children} criança(s) até 10 anos fora da conta` },
+    { label: "Confirmados", value: confirmed, detail: `${payingAll.filter((guest) => guest.status === "Aguardando").length} aguardando resposta` },
+    { label: "Declinados", value: declined, detail: "já descontados do total" },
+    { label: `${percent}% de 110 convites`, value: `${totalGuests}/${INVITE_TARGET}`, detail: totalGuests > INVITE_TARGET ? `${totalGuests - INVITE_TARGET} acima do limite` : `${INVITE_TARGET - totalGuests} vaga(s) disponível(is)` },
   ];
 
   return (
