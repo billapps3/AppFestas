@@ -70,7 +70,11 @@ type Guest = {
   physical: boolean;
   personal: boolean;
   family: string;
+  host: string;
 };
+
+const hosts = ["William", "Késya", "Mirella"];
+const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
   { id: 1, name: "Definir identidade visual", area: "Preparação", owner: "Mamãe", due: "08 ago", status: "Concluído", priority: "Alta" },
@@ -91,6 +95,8 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   virtual: index < 31,
   physical: index < 14,
   personal: index < 6,
+  family: seedFamilies[guest.id] ?? "",
+  host: "",
 }));
 
 const suppliers = [
