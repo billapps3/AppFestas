@@ -21,6 +21,7 @@ import {
   Plus,
   Search,
   Send,
+  Baby,
   Sparkles,
   Store,
   Users,
@@ -71,6 +72,7 @@ type Guest = {
   personal: boolean;
   family: string;
   host: string;
+  child: boolean;
 };
 
 const hosts = ["William", "Késya", "Mirella"];
@@ -98,6 +100,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   personal: index < 6,
   family: seedFamilies[guest.id] ?? "",
   host: "",
+  child: (guest.age ?? 99) <= 10,
 }));
 
 const suppliers = [
@@ -154,19 +157,19 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo-v2");
+    const saved = window.localStorage.getItem("mirella15-demo-v3");
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
       if (parsed.tasks) setTasks(parsed.tasks);
-      if (parsed.guests) setGuests(parsed.guests);
+      if (parsed.guests) setGuests(parsed.guests.map((guest) => ({ ...guest, child: guest.child ?? (guest.age ?? 99) <= 10 })));
     } catch {
-      window.localStorage.removeItem("mirella15-demo");
+      window.localStorage.removeItem("mirella15-demo-v3");
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("mirella15-demo-v2", JSON.stringify({ tasks, guests }));
+    window.localStorage.setItem("mirella15-demo-v3", JSON.stringify({ tasks, guests }));
   }, [tasks, guests]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
@@ -196,7 +199,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "", child: false }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -258,9 +261,22 @@ function FestaApp() {
   );
 }
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+function Overview({ daysLeft, completedTasks, totalGuests, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
-  const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
+  const [hostFilter, setHostFilter] = useState("Todos");
+  const scoped = useMemo(
+    () => guests.filter((guest) => (hostFilter === "Todos" ? true : hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)),
+    [guests, hostFilter],
+  );
+  const total = scoped.length;
+  const confirmed = scoped.filter((guest) => guest.status === "Confirmado").length;
+  const declined = scoped.filter((guest) => guest.status === "Não confirmado").length;
+  const waiting = scoped.filter((guest) => guest.status === "Aguardando").length;
+  const available = total - declined;
+  const children = scoped.filter((guest) => guest.child).length;
+  const confirmedChildren = scoped.filter((guest) => guest.child && guest.status === "Confirmado").length;
+  const payingConfirmed = confirmed - confirmedChildren;
+  const virtual = scoped.filter((guest) => guest.virtual).length;
   return <div className="space-y-8">
     <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-7 text-primary-foreground shadow-sm sm:px-9 sm:py-9">
       <div className="relative z-10 max-w-2xl"><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60"><Sparkles className="size-4" />Contagem regressiva</div><h1 className="font-serif text-[36px] leading-[1.05] sm:text-[48px]">O grande dia está<br className="hidden sm:block" /> chegando, Mirella.</h1><p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/68">Acompanhe cada detalhe da sua festa de 15 anos e deixe a organização mais leve.</p><div className="mt-7 flex items-end gap-3"><span className="font-serif text-[58px] leading-none sm:text-[68px]">{daysLeft}</span><span className="pb-1 text-sm text-primary-foreground/65">dias até<br />02.10.2026</span></div></div>
@@ -269,9 +285,34 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
 
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={ClipboardCheck} label="Tarefas concluídas" value={`${completedTasks} / ${tasks.length}`} detail={`${tasks.length - completedTasks} em aberto`} tone="rose" onClick={() => onView("tasks")} />
-      <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
+      <Metric icon={Users} label="Convidados confirmados" value={`${confirmed}`} detail={`de ${total} convidados`} tone="gold" onClick={() => onView("guests")} />
       <Metric icon={WalletCards} label="Saldo a pagar" value={money(34800)} detail="de R$ 50.600 previstos" tone="sage" onClick={() => onView("finance")} />
-      <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
+      <Metric icon={Send} label="Convites virtuais" value={`${virtual} / ${total}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
+    </section>
+
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <SectionHeading eyebrow="Lista de convidados" title="Números da confirmação" />
+        <div className="flex flex-wrap gap-2">
+          {["Todos", ...hosts, "Sem responsável"].map((option) => (
+            <button
+              key={option}
+              onClick={() => setHostFilter(option)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${hostFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <NumberCard label="Total de convidados" value={total} detail={hostFilter === "Todos" ? "lista completa" : `responsável: ${hostFilter}`} />
+        <NumberCard label="Confirmados" value={confirmed} detail={`${payingConfirmed} pagantes · ${confirmedChildren} crianças`} tone="primary" />
+        <NumberCard label="Aguardando resposta" value={waiting} detail="ainda sem retorno" />
+        <NumberCard label="Declinados" value={declined} detail="não vêm à festa" />
+        <NumberCard label="Lista sem os declinados" value={available} detail={`${declined} convites livres para reofertar`} tone="primary" />
+        <NumberCard label="Crianças até 10 anos" value={children} detail="marcadas como não pagantes" />
+      </div>
     </section>
 
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -285,6 +326,10 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
 
 function Metric({ icon: Icon, label, value, detail, tone, onClick }: { icon: typeof Users; label: string; value: string; detail: string; tone: "rose" | "gold" | "sage" | "lilac"; onClick: () => void }) {
   return <button onClick={onClick} className="group rounded-xl border border-border bg-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between"><span className={`grid size-9 place-items-center rounded-lg metric-${tone}`}><Icon className="size-[17px]" /></span><ArrowUpRight className="size-4 text-muted-foreground/45 transition group-hover:text-primary" /></div><div className="mt-5 text-xs text-muted-foreground">{label}</div><div className="mt-1 font-serif text-[30px] leading-none">{value}</div><div className="mt-2 text-[11px] text-muted-foreground">{detail}</div></button>;
+}
+
+function NumberCard({ label, value, detail, tone }: { label: string; value: number; detail: string; tone?: "primary" }) {
+  return <div className={`rounded-xl border p-4 ${tone === "primary" ? "border-primary/25 bg-primary/5" : "border-border bg-background"}`}><div className="text-xs text-muted-foreground">{label}</div><div className={`mt-2 font-serif text-3xl leading-none ${tone === "primary" ? "text-primary" : ""}`}>{value}</div><div className="mt-2 text-[11px] text-muted-foreground">{detail}</div></div>;
 }
 
 function SectionHeading({ eyebrow, title, action, onClick }: { eyebrow: string; title: string; action?: string; onClick?: () => void }) {
@@ -353,8 +398,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
-    { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Grupos familiares", value: familyOptions.length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Crianças não pagantes", value: guests.filter((guest) => guest.child).length },
   ];
 
   return (
@@ -468,6 +513,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
+            {guest.child && <Badge variant="secondary" className="text-[9px]">Criança · não pagante</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
         </div>
@@ -475,8 +521,9 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1">
-          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
-          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual enviado" aria-label={`Convite virtual de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico entregue" aria-label={`Convite físico de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { child: !guest.child })} title="Criança até 10 anos (não pagante)" aria-label={`Criança não pagante: ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
         <select
