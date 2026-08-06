@@ -513,6 +513,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
+            {guest.child && <Badge variant="secondary" className="text-[9px]">Criança · não pagante</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
         </div>
@@ -520,8 +521,9 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1">
-          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
-          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual enviado" aria-label={`Convite virtual de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico entregue" aria-label={`Convite físico de ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { child: !guest.child })} title="Criança até 10 anos (não pagante)" aria-label={`Criança não pagante: ${guest.name}`} className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
         <select
