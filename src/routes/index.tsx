@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { importedGuests } from "@/lib/mirella-guests";
+import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import {
   ArrowUpRight,
   Bell,
