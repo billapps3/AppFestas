@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { importedGuests } from "@/lib/mirella-guests";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowUpRight,
   Bell,
@@ -76,6 +77,7 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
+const STATE_ID = "mirella15";
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
