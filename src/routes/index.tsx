@@ -528,10 +528,6 @@ function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: 
     </div>
   );
 }
-  const [filter, setFilter] = useState("Todas");
-  const filtered = filter === "Todas" ? tasks : tasks.filter((task) => task.status === filter);
-  return <div className="space-y-7"><PageIntro eyebrow="Planejamento" title="Tarefas" description="Uma visão simples do que já foi feito e do próximo passo da festa." action={<Button><Plus />Nova tarefa</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={ClipboardCheck} label="Concluídas" value={`${tasks.filter((task) => task.status === "Concluído").length}`} detail="tarefas finalizadas" tone="rose" onClick={() => setFilter("Concluído")} /><Metric icon={Clock3} label="Em andamento" value={`${tasks.filter((task) => task.status === "Em andamento").length}`} detail="precisam de atenção" tone="gold" onClick={() => setFilter("Em andamento")} /><Metric icon={Bell} label="Aguardando" value={`${tasks.filter((task) => task.status === "Aguardando").length}`} detail="dependem de uma ação" tone="sage" onClick={() => setFilter("Aguardando")} /></div><section className="rounded-xl border border-border bg-card p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} tarefas exibidas</span></div><div className="mt-5">{filtered.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section></div>;
-}
 
 type GuestsViewProps = {
   guests: Guest[];
