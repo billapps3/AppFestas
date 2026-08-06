@@ -19,6 +19,7 @@ export type StoredGuest = {
   virtual: boolean;
   physical: boolean;
   personal: boolean;
+  child: boolean;
   family: string;
   host: string;
 };
@@ -54,6 +55,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     virtual: row.invite_virtual,
     physical: row.invite_physical,
     personal: row.invite_personal,
+    child: row.is_child ?? false,
     family: (row.family_id && families.byId.get(row.family_id)) || "",
     host: (row.host_id && hosts.byId.get(row.host_id)) || "",
   }));
@@ -93,7 +95,7 @@ export async function saveMirellaState(state: MirellaState) {
     name: guest.name,
     phone: guest.phone ?? null,
     age: guest.age ?? null,
-    is_child: typeof guest.age === "number" ? guest.age < 12 : false,
+    is_child: guest.child,
     status: guest.status,
     invite_virtual: guest.virtual,
     invite_physical: guest.physical,

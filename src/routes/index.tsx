@@ -4,6 +4,7 @@ import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import {
   ArrowUpRight,
+  Baby,
   Bell,
   CalendarDays,
   Check,
@@ -70,6 +71,7 @@ type Guest = {
   virtual: boolean;
   physical: boolean;
   personal: boolean;
+  child: boolean;
   family: string;
   host: string;
 };
@@ -97,6 +99,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   virtual: index < 31,
   physical: index < 14,
   personal: index < 6,
+  child: typeof guest.age === "number" ? guest.age <= 10 : false,
   family: seedFamilies[guest.id] ?? "",
   host: "",
 }));
@@ -210,7 +213,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, child: false, family: "", host: "" }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -261,7 +264,7 @@ function FestaApp() {
         </header>
 
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
-          {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={123} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
+          {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
           {view === "suppliers" && <SuppliersView />}
@@ -275,6 +278,10 @@ function FestaApp() {
 function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
+  const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
+  const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
+  const children = guests.filter((guest) => guest.child).length;
+  const inviteBalance = totalGuests - children - declined;
   return <div className="space-y-8">
     <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-7 text-primary-foreground shadow-sm sm:px-9 sm:py-9">
       <div className="relative z-10 max-w-2xl"><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60"><Sparkles className="size-4" />Contagem regressiva</div><h1 className="font-serif text-[36px] leading-[1.05] sm:text-[48px]">O grande dia está<br className="hidden sm:block" /> chegando, Mirella.</h1><p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/68">Acompanhe cada detalhe da sua festa de 15 anos e deixe a organização mais leve.</p><div className="mt-7 flex items-end gap-3"><span className="font-serif text-[58px] leading-none sm:text-[68px]">{daysLeft}</span><span className="pb-1 text-sm text-primary-foreground/65">dias até<br />02.10.2026</span></div></div>
@@ -286,6 +293,26 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
       <Metric icon={WalletCards} label="Saldo a pagar" value={money(34800)} detail="de R$ 50.600 previstos" tone="sage" onClick={() => onView("finance")} />
       <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
+    </section>
+
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <SectionHeading eyebrow="Resumo da lista" title="Convidados e convites" action="Abrir lista" onClick={() => onView("guests")} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          { label: "Total de convidados", value: totalGuests, hint: "pessoas na lista" },
+          { label: "Confirmados", value: confirmed, hint: "vão comparecer" },
+          { label: "Declinados", value: declined, hint: "não vão" },
+          { label: "Aguardando", value: waiting, hint: "sem resposta" },
+          { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
+          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-border bg-background p-4">
+            <div className="text-[11px] leading-tight text-muted-foreground">{item.label}</div>
+            <div className="mt-2 font-serif text-3xl">{item.value}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{item.hint}</div>
+          </div>
+        ))}
+      </div>
     </section>
 
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -367,8 +394,10 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Crianças até 10 anos", value: guests.filter((guest) => guest.child).length },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Grupos familiares", value: familyOptions.length },
+    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado").length },
   ];
 
   return (
@@ -385,7 +414,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           <Button onClick={addGuest}>Adicionar</Button>
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">{stat.label}</div>
@@ -481,6 +510,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
+            {guest.child && <Badge variant="secondary" className="text-[9px]">Criança até 10</Badge>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
@@ -491,6 +521,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
         <div className="flex gap-1">
           <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
           <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { child: !guest.child })} aria-pressed={guest.child} title="Criança até 10 anos (não pagante)" className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
         <select
