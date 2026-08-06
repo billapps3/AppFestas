@@ -8,6 +8,7 @@ export type StoredTask = {
   due: string;
   status: string;
   priority: string;
+  parent?: number | null;
 };
 
 export type StoredGuest = {
@@ -68,6 +69,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     due: row.due ?? "",
     status: row.status,
     priority: row.priority,
+    parent: row.parent_legacy_id ?? null,
   }));
 
   return { tasks, guests };
@@ -118,9 +120,14 @@ export async function saveMirellaState(state: MirellaState) {
         due: task.due,
         status: task.status,
         priority: task.priority,
+        parent_legacy_id: task.parent ?? null,
       })),
       { onConflict: "legacy_id" },
     );
     if (taskError) throw taskError;
+    await supabase
+      .from("tasks")
+      .delete()
+      .not("legacy_id", "in", `(${tasks.map((task) => task.id).join(",")})`);
   }
 }
