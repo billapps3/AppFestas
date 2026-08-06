@@ -139,6 +139,7 @@ function FestaApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [newGuest, setNewGuest] = useState("");
+  const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
 
   useEffect(() => {
@@ -152,7 +153,7 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo");
+    const saved = window.localStorage.getItem("mirella15-demo-v2");
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
@@ -164,15 +165,15 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("mirella15-demo", JSON.stringify({ tasks, guests }));
+    window.localStorage.setItem("mirella15-demo-v2", JSON.stringify({ tasks, guests }));
   }, [tasks, guests]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
   const virtualSent = guests.filter((guest) => guest.virtual).length;
   const filteredGuests = useMemo(
-    () => guests.filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase())),
-    [guests, search],
+    () => guests.filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase()) && (hostFilter === "Todos" || (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter))),
+    [guests, search, hostFilter],
   );
 
   const changeTaskStatus = (id: number) => {
@@ -183,10 +184,18 @@ function FestaApp() {
     setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, status } : guest));
   };
 
+  const updateGuest = (id: number, patch: Partial<Guest>) => {
+    setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, ...patch } : guest));
+  };
+
+  const setFamilyHost = (family: string, host: string) => {
+    setGuests((current) => current.map((guest) => guest.family === family ? { ...guest, host } : guest));
+  };
+
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: current.length + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "" }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -239,7 +248,7 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={123} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} />}
-          {view === "guests" && <GuestsView guests={filteredGuests} search={search} setSearch={setSearch} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} />}
+          {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
           {view === "suppliers" && <SuppliersView />}
           {view === "finance" && <FinanceView />}
         </main>
