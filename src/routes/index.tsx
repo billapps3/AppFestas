@@ -332,10 +332,6 @@ function NumberCard({ label, value, detail, tone }: { label: string; value: numb
   return <div className={`rounded-xl border p-4 ${tone === "primary" ? "border-primary/25 bg-primary/5" : "border-border bg-background"}`}><div className="text-xs text-muted-foreground">{label}</div><div className={`mt-2 font-serif text-3xl leading-none ${tone === "primary" ? "text-primary" : ""}`}>{value}</div><div className="mt-2 text-[11px] text-muted-foreground">{detail}</div></div>;
 }
 
-function MetricUnused({ icon: Icon, label, value, detail, tone, onClick }: { icon: typeof Users; label: string; value: string; detail: string; tone: "rose" | "gold" | "sage" | "lilac"; onClick: () => void }) {
-  return <button onClick={onClick} className="group rounded-xl border border-border bg-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between"><span className={`grid size-9 place-items-center rounded-lg metric-${tone}`}><Icon className="size-[17px]" /></span><ArrowUpRight className="size-4 text-muted-foreground/45 transition group-hover:text-primary" /></div><div className="mt-5 text-xs text-muted-foreground">{label}</div><div className="mt-1 font-serif text-[30px] leading-none">{value}</div><div className="mt-2 text-[11px] text-muted-foreground">{detail}</div></button>;
-}
-
 function SectionHeading({ eyebrow, title, action, onClick }: { eyebrow: string; title: string; action?: string; onClick?: () => void }) {
   return <div className="flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</div><h2 className="mt-1 font-serif text-[24px]">{title}</h2></div>{action && <Button variant="ghost" size="sm" onClick={onClick} className="gap-1 text-xs text-muted-foreground">{action}<ChevronRight className="size-3.5" /></Button>}</div>;
 }
