@@ -382,17 +382,18 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
 
   const sections = useMemo(() => {
     const groups = [...hosts, "Sem responsável"];
+    const byCode = (a: Guest, b: Guest) => a.id - b.id;
     return groups
       .map((host) => {
-        const people = guests.filter((guest) => (host === "Sem responsável" ? !guest.host : guest.host === host));
+        const people = guests.filter((guest) => (host === "Sem responsável" ? !guest.host : guest.host === host)).sort(byCode);
         const families = Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
           .sort((a, b) => a.localeCompare(b, "pt-BR"))
           .map((family) => ({
             family,
             principal: people.find((guest) => guest.name === family),
-            members: people.filter((guest) => guest.family === family && guest.name !== family),
+            members: people.filter((guest) => guest.family === family && guest.name !== family).sort(byCode),
           }));
-        const singles = people.filter((guest) => !guest.family);
+        const singles = people.filter((guest) => !guest.family).sort(byCode);
         return { host, people, families, singles };
       })
       .filter((section) => section.people.length > 0);
