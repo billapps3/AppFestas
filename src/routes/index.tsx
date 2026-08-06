@@ -21,6 +21,7 @@ import {
   Plus,
   Search,
   Send,
+  Baby,
   Sparkles,
   Store,
   Users,
@@ -71,6 +72,7 @@ type Guest = {
   personal: boolean;
   family: string;
   host: string;
+  child: boolean;
 };
 
 const hosts = ["William", "Késya", "Mirella"];
@@ -98,6 +100,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   personal: index < 6,
   family: seedFamilies[guest.id] ?? "",
   host: "",
+  child: (guest.age ?? 99) <= 10,
 }));
 
 const suppliers = [
