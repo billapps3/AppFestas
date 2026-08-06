@@ -157,19 +157,19 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo-v2");
+    const saved = window.localStorage.getItem("mirella15-demo-v3");
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
       if (parsed.tasks) setTasks(parsed.tasks);
-      if (parsed.guests) setGuests(parsed.guests);
+      if (parsed.guests) setGuests(parsed.guests.map((guest) => ({ ...guest, child: guest.child ?? (guest.age ?? 99) <= 10 })));
     } catch {
-      window.localStorage.removeItem("mirella15-demo");
+      window.localStorage.removeItem("mirella15-demo-v3");
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("mirella15-demo-v2", JSON.stringify({ tasks, guests }));
+    window.localStorage.setItem("mirella15-demo-v3", JSON.stringify({ tasks, guests }));
   }, [tasks, guests]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
@@ -398,8 +398,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
-    { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Grupos familiares", value: familyOptions.length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Crianças não pagantes", value: guests.filter((guest) => guest.child).length },
   ];
 
   return (
