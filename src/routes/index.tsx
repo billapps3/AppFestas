@@ -60,6 +60,7 @@ type Task = {
   due: string;
   status: TaskStatus;
   priority: "Alta" | "Média" | "Baixa";
+  parent?: number | null;
 };
 
 type Guest = {
@@ -77,6 +78,9 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
+const taskOwners = ["William", "Késya", "Mirella", "Mamãe", "Papai"];
+const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
+const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
