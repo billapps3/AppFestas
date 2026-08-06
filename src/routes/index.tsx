@@ -509,7 +509,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
 
 function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
   return (
-    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${isPrincipal ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{guest.name.charAt(0)}</span>
         <div className="min-w-0">
