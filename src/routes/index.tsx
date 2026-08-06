@@ -111,26 +111,6 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   host: "",
 }));
 
-const suppliers = [
-  { name: "Buffet", status: "Em negociação", value: 18500, paid: 5000, due: "30 ago", icon: Gift },
-  { name: "Fotógrafo", status: "Contratado", value: 4800, paid: 2400, due: "15 set", icon: Sparkles },
-  { name: "DJ", status: "Orçamento", value: 3200, paid: 0, due: "18 set", icon: Send },
-  { name: "Decoração", status: "Contratado", value: 12500, paid: 6250, due: "24 set", icon: Sparkles },
-  { name: "Vestido", status: "Contratado", value: 7800, paid: 3900, due: "05 set", icon: Heart },
-  { name: "Maquiagem", status: "A contratar", value: 1500, paid: 0, due: "28 set", icon: Sparkles },
-  { name: "Chinelos", status: "Orçamento", value: 2800, paid: 0, due: "10 set", icon: PackageCheck },
-  { name: "Lembrancinhas", status: "A contratar", value: 4200, paid: 0, due: "20 set", icon: Gift },
-];
-
-const financeRows = [
-  { name: "Buffet", planned: 18500, paid: 5000, due: "30 ago", status: "Parcial" },
-  { name: "Vestido", planned: 7800, paid: 3900, due: "05 set", status: "Parcial" },
-  { name: "Fotógrafo", planned: 4800, paid: 2400, due: "15 set", status: "Parcial" },
-  { name: "DJ", planned: 3200, paid: 0, due: "18 set", status: "Pendente" },
-  { name: "Decoração", planned: 12500, paid: 6250, due: "24 set", status: "Parcial" },
-  { name: "Doces", planned: 3800, paid: 0, due: "26 set", status: "Pendente" },
-];
-
 const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "tasks", label: "Tarefas", icon: ClipboardCheck },
