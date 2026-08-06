@@ -73,6 +73,9 @@ type Guest = {
   family: string;
   host: string;
   child: boolean;
+  virtualDate?: string;
+  physicalDate?: string;
+  confirmDue?: string;
 };
 
 const hosts = ["William", "Késya", "Mirella"];
