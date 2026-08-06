@@ -74,6 +74,7 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
+const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
@@ -324,7 +325,10 @@ type GuestsViewProps = {
 
 function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost }: GuestsViewProps) {
   const familyOptions = useMemo(
-    () => Array.from(new Set(allGuests.filter((guest) => guest.family).map((guest) => guest.family))).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    () =>
+      Array.from(new Set([...extraFamilies, ...allGuests.filter((guest) => guest.family).map((guest) => guest.family)])).sort((a, b) =>
+        a.localeCompare(b, "pt-BR"),
+      ),
     [allGuests],
   );
 
