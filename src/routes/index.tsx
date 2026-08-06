@@ -324,7 +324,10 @@ type GuestsViewProps = {
 
 function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost }: GuestsViewProps) {
   const familyOptions = useMemo(
-    () => Array.from(new Set(allGuests.filter((guest) => guest.family).map((guest) => guest.family))).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    () =>
+      Array.from(new Set([...extraFamilies, ...allGuests.filter((guest) => guest.family).map((guest) => guest.family)])).sort((a, b) =>
+        a.localeCompare(b, "pt-BR"),
+      ),
     [allGuests],
   );
 
