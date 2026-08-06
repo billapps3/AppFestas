@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { importedGuests } from "@/lib/mirella-guests";
+import { loadFestaState, saveFestaState } from "@/lib/festa-store";
 import {
   ArrowUpRight,
   Bell,
