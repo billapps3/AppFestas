@@ -261,9 +261,22 @@ function FestaApp() {
   );
 }
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+function Overview({ daysLeft, completedTasks, totalGuests, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
-  const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
+  const [hostFilter, setHostFilter] = useState("Todos");
+  const scoped = useMemo(
+    () => guests.filter((guest) => (hostFilter === "Todos" ? true : hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)),
+    [guests, hostFilter],
+  );
+  const total = scoped.length;
+  const confirmed = scoped.filter((guest) => guest.status === "Confirmado").length;
+  const declined = scoped.filter((guest) => guest.status === "Não confirmado").length;
+  const waiting = scoped.filter((guest) => guest.status === "Aguardando").length;
+  const available = total - declined;
+  const children = scoped.filter((guest) => guest.child).length;
+  const confirmedChildren = scoped.filter((guest) => guest.child && guest.status === "Confirmado").length;
+  const payingConfirmed = confirmed - confirmedChildren;
+  const virtual = scoped.filter((guest) => guest.virtual).length;
   return <div className="space-y-8">
     <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-7 text-primary-foreground shadow-sm sm:px-9 sm:py-9">
       <div className="relative z-10 max-w-2xl"><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60"><Sparkles className="size-4" />Contagem regressiva</div><h1 className="font-serif text-[36px] leading-[1.05] sm:text-[48px]">O grande dia está<br className="hidden sm:block" /> chegando, Mirella.</h1><p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/68">Acompanhe cada detalhe da sua festa de 15 anos e deixe a organização mais leve.</p><div className="mt-7 flex items-end gap-3"><span className="font-serif text-[58px] leading-none sm:text-[68px]">{daysLeft}</span><span className="pb-1 text-sm text-primary-foreground/65">dias até<br />02.10.2026</span></div></div>
@@ -272,9 +285,34 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
 
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={ClipboardCheck} label="Tarefas concluídas" value={`${completedTasks} / ${tasks.length}`} detail={`${tasks.length - completedTasks} em aberto`} tone="rose" onClick={() => onView("tasks")} />
-      <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
+      <Metric icon={Users} label="Convidados confirmados" value={`${confirmed}`} detail={`de ${total} convidados`} tone="gold" onClick={() => onView("guests")} />
       <Metric icon={WalletCards} label="Saldo a pagar" value={money(34800)} detail="de R$ 50.600 previstos" tone="sage" onClick={() => onView("finance")} />
-      <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
+      <Metric icon={Send} label="Convites virtuais" value={`${virtual} / ${total}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
+    </section>
+
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <SectionHeading eyebrow="Lista de convidados" title="Números da confirmação" />
+        <div className="flex flex-wrap gap-2">
+          {["Todos", ...hosts, "Sem responsável"].map((option) => (
+            <button
+              key={option}
+              onClick={() => setHostFilter(option)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${hostFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <NumberCard label="Total de convidados" value={total} detail={hostFilter === "Todos" ? "lista completa" : `responsável: ${hostFilter}`} />
+        <NumberCard label="Confirmados" value={confirmed} detail={`${payingConfirmed} pagantes · ${confirmedChildren} crianças`} tone="primary" />
+        <NumberCard label="Aguardando resposta" value={waiting} detail="ainda sem retorno" />
+        <NumberCard label="Declinados" value={declined} detail="não vêm à festa" />
+        <NumberCard label="Lista sem os declinados" value={available} detail={`${declined} convites livres para reofertar`} tone="primary" />
+        <NumberCard label="Crianças até 10 anos" value={children} detail="marcadas como não pagantes" />
+      </div>
     </section>
 
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
