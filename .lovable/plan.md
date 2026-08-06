@@ -47,10 +47,17 @@ Você continua podendo me mandar frases como "Produção dos chinelos concluída
 
 Tons claros e festivos (rosa suave, dourado, off-white), tipografia elegante com títulos em serifada, cartões arredondados, tabelas que viram cartões no celular. Nada de roxo genérico.
 
-## Pendências
+## Lista de convidados (arquivo já recebido)
 
-- A planilha **Lista Mirella .xlsx** ainda não chegou. Assim que você anexar, normalizo os 123 nomes (blocos lado a lado → uma pessoa por linha, separando idade entre parênteses e telefone) e escrevo o resultado na aba Convidados.
-- Se preferir, posso começar pelas outras abas enquanto o arquivo não vem.
+Li o `Lista_Mirella.xlsx`: aba única, 5 blocos lado a lado (1–25, 26–50, 51–75, 76–100, 101–125), com colunas "Por família" e "telefone". 123 nomes preenchidos; 124 e 125 vazios.
+
+Normalização que farei:
+- uma pessoa por linha, mantendo o número original como **Código**
+- idade entre parênteses extraída para a coluna **Idade** (ex.: "Noah Almeida (5)" → Noah Almeida / 5); casos grudados como "Juan Almeida(5)" também
+- telefone movido para a coluna **Telefone** (apenas 7 têm)
+- prefixos "Vovô/Vovó/Tio/Tia" ficam no nome, sem inventar parentesco
+- **Grupo** e **Família** ficam em branco quando não dá para identificar com certeza — não vou adivinhar
+- Quantidade = 1 por padrão; espaços em branco no fim dos nomes são limpos
 
 ## Detalhes técnicos
 
