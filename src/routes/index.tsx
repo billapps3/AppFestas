@@ -295,6 +295,26 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
     </section>
 
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <SectionHeading eyebrow="Resumo da lista" title="Convidados e convites" action="Abrir lista" onClick={() => onView("guests")} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          { label: "Total de convidados", value: totalGuests, hint: "pessoas na lista" },
+          { label: "Confirmados", value: confirmed, hint: "vão comparecer" },
+          { label: "Declinados", value: declined, hint: "não vão" },
+          { label: "Aguardando", value: waiting, hint: "sem resposta" },
+          { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
+          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-border bg-background p-4">
+            <div className="text-[11px] leading-tight text-muted-foreground">{item.label}</div>
+            <div className="mt-2 font-serif text-3xl">{item.value}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{item.hint}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Acompanhe de perto" title="Próximos prazos" action="Ver todas" onClick={() => onView("tasks")} /><div className="mt-6 space-y-1">{upcoming.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section>
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
