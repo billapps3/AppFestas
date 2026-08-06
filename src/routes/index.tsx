@@ -748,6 +748,182 @@ function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: n
   );
 }
 
-function SuppliersView() { return <div className="space-y-7"><PageIntro eyebrow="Parceiros da festa" title="Fornecedores" description="Acompanhe contratos, valores e o que ainda precisa ser fechado." action={<Button><Plus />Adicionar fornecedor</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={Store} label="Contratados" value="3" detail="de 8 fornecedores" tone="rose" onClick={() => undefined} /><Metric icon={CircleDollarSign} label="Valor contratado" value="R$ 49.100" detail="soma dos contratos" tone="gold" onClick={() => undefined} /><Metric icon={Clock3} label="A contratar" value="4" detail="precisam de orçamento" tone="sage" onClick={() => undefined} /></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{suppliers.map(({ name, status, value, paid, due, icon: Icon }) => <div key={name} className="rounded-xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between"><span className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground"><Icon className="size-4" /></span><MoreHorizontal className="size-4 text-muted-foreground" /></div><div className="mt-5 font-medium">{name}</div><Badge variant={status === "Contratado" ? "secondary" : status === "Em negociação" ? "default" : "outline"} className="mt-2 text-[10px]">{status}</Badge><div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(value)}</span></div><div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(value - paid)}</span></div><div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {due}</div></div>)}</section></div>; }
+function SupplierForm({ title, initial, onSubmit, onCancel }: { title: string; initial: Partial<Supplier>; onSubmit: (values: Omit<Supplier, "id">) => void; onCancel: () => void }) {
+  const [name, setName] = useState(initial.name ?? "");
+  const [category, setCategory] = useState(initial.category ?? "");
+  const [contact, setContact] = useState(initial.contact ?? "");
+  const [status, setStatus] = useState(initial.status ?? "Orçamento");
+  const [value, setValue] = useState(String(initial.value ?? ""));
+  const [paid, setPaid] = useState(String(initial.paid ?? ""));
+  const [due, setDue] = useState(initial.due ?? "");
+  const [notes, setNotes] = useState(initial.notes ?? "");
 
-function FinanceView() { const planned = financeRows.reduce((sum, row) => sum + row.planned, 0); const paid = financeRows.reduce((sum, row) => sum + row.paid, 0); return <div className="space-y-7"><PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Tenha clareza do que foi previsto, pago e ainda falta pagar." action={<Button><Plus />Lançar despesa</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail="para os itens cadastrados" tone="rose" onClick={() => undefined} /><Metric icon={Check} label="Total pago" value={money(paid)} detail={`${Math.round((paid / planned) * 100)}% do orçamento`} tone="sage" onClick={() => undefined} /><Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail="próximos vencimentos" tone="gold" onClick={() => undefined} /></div><section className="overflow-hidden rounded-xl border border-border bg-card"><div className="border-b border-border p-5 sm:p-6"><h2 className="font-serif text-2xl">Despesas da festa</h2><p className="mt-1 text-xs text-muted-foreground">Valores em reais brasileiros</p></div><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Categoria</th><th className="px-4 py-3 font-semibold">Previsto</th><th className="px-4 py-3 font-semibold">Pago</th><th className="px-4 py-3 font-semibold">Falta pagar</th><th className="px-4 py-3 font-semibold">Vencimento</th><th className="px-6 py-3 font-semibold">Status</th></tr></thead><tbody>{financeRows.map((row) => <tr key={row.name} className="border-t border-border"><td className="px-6 py-4 font-medium">{row.name}</td><td className="px-4 py-4 text-muted-foreground">{money(row.planned)}</td><td className="px-4 py-4">{money(row.paid)}</td><td className="px-4 py-4 font-semibold text-primary">{money(row.planned - row.paid)}</td><td className="px-4 py-4 text-xs text-muted-foreground">{row.due}</td><td className="px-6 py-4"><Badge variant={row.status === "Parcial" ? "secondary" : "outline"} className="text-[10px]">{row.status}</Badge></td></tr>)}</tbody></table></div></section></div>; }
+  const submit = () => {
+    if (!name.trim()) return;
+    onSubmit({ name: name.trim(), category: category.trim(), contact: contact.trim(), status, value: Number(value) || 0, paid: Number(paid) || 0, due, notes: notes.trim() });
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+      <div className="text-xs font-semibold text-primary">{title}</div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="text-[11px] text-muted-foreground">Fornecedor
+          <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Buffet" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Categoria
+          <Input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Ex.: Alimentação" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Contato
+          <Input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Telefone ou e-mail" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Status
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className={`mt-1 ${fieldClass}`}>{supplierStatuses.map((item) => <option key={item}>{item}</option>)}</select>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Valor (R$)
+          <Input type="number" value={value} onChange={(event) => setValue(event.target.value)} placeholder="0" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Já pago (R$)
+          <Input type="number" value={paid} onChange={(event) => setPaid(event.target.value)} placeholder="0" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Vencimento
+          <Input type="date" value={due} onChange={(event) => setDue(event.target.value)} className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Observações
+          <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anotações" className="mt-1 h-9 text-xs" />
+        </label>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button size="sm" onClick={submit}>Salvar</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+function SuppliersView() {
+  const { items, loading, create, update, remove } = useSuppliers();
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const contracted = items.filter((item) => item.status === "Contratado").length;
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  const pending = items.filter((item) => item.status !== "Contratado").length;
+
+  return <div className="space-y-7">
+    <PageIntro eyebrow="Parceiros da festa" title="Fornecedores" description="Acompanhe contratos, valores e o que ainda precisa ser fechado." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Adicionar fornecedor</Button>} />
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Metric icon={Store} label="Contratados" value={String(contracted)} detail={`de ${items.length} fornecedores`} tone="rose" onClick={() => undefined} />
+      <Metric icon={CircleDollarSign} label="Valor contratado" value={money(total)} detail="soma dos contratos" tone="gold" onClick={() => undefined} />
+      <Metric icon={Clock3} label="A contratar" value={String(pending)} detail="precisam de orçamento" tone="sage" onClick={() => undefined} />
+    </div>
+    {creating && <SupplierForm title="Novo fornecedor" initial={{}} onSubmit={(values) => { void create(values); setCreating(false); }} onCancel={() => setCreating(false)} />}
+    {loading ? <div className="text-sm text-muted-foreground">Carregando fornecedores…</div>
+      : items.length === 0 && !creating ? <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhum fornecedor cadastrado ainda. Use “Adicionar fornecedor”.</div>
+      : <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((item) => editing === item.id
+            ? <div key={item.id} className="sm:col-span-2 xl:col-span-3"><SupplierForm title={`Editar ${item.name}`} initial={item} onSubmit={(values) => { void update(item.id, values); setEditing(null); }} onCancel={() => setEditing(null)} /></div>
+            : <div key={item.id} className="rounded-xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex items-start justify-between">
+                  <span className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground"><Store className="size-4" /></span>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="size-7" aria-label="Editar fornecedor" onClick={() => { setEditing(item.id); setCreating(false); }}><Pencil className="size-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" aria-label="Excluir fornecedor" onClick={() => { if (confirm(`Excluir ${item.name}?`)) void remove(item.id); }}><Trash2 className="size-3.5" /></Button>
+                  </div>
+                </div>
+                <div className="mt-5 font-medium">{item.name}</div>
+                {item.category && <div className="mt-0.5 text-[11px] text-muted-foreground">{item.category}</div>}
+                <Badge variant={item.status === "Contratado" ? "secondary" : item.status === "Em negociação" ? "default" : "outline"} className="mt-2 text-[10px]">{item.status}</Badge>
+                <div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(item.value)}</span></div>
+                <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(item.value - item.paid)}</span></div>
+                {item.contact && <div className="mt-2 text-[11px] text-muted-foreground">{item.contact}</div>}
+                <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {formatDue(item.due)}</div>
+              </div>)}
+        </section>}
+  </div>;
+}
+
+function ExpenseForm({ title, initial, onSubmit, onCancel }: { title: string; initial: Partial<Expense>; onSubmit: (values: Omit<Expense, "id">) => void; onCancel: () => void }) {
+  const [name, setName] = useState(initial.name ?? "");
+  const [description, setDescription] = useState(initial.description ?? "");
+  const [planned, setPlanned] = useState(String(initial.planned ?? ""));
+  const [paid, setPaid] = useState(String(initial.paid ?? ""));
+  const [due, setDue] = useState(initial.due ?? "");
+  const [status, setStatus] = useState(initial.status ?? "Pendente");
+
+  const submit = () => {
+    if (!name.trim()) return;
+    onSubmit({ name: name.trim(), description: description.trim(), planned: Number(planned) || 0, paid: Number(paid) || 0, due, status });
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+      <div className="text-xs font-semibold text-primary">{title}</div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <label className="text-[11px] text-muted-foreground">Categoria
+          <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Buffet" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Descrição
+          <Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Detalhe da despesa" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Status
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className={`mt-1 ${fieldClass}`}>{expenseStatuses.map((item) => <option key={item}>{item}</option>)}</select>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Previsto (R$)
+          <Input type="number" value={planned} onChange={(event) => setPlanned(event.target.value)} placeholder="0" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Pago (R$)
+          <Input type="number" value={paid} onChange={(event) => setPaid(event.target.value)} placeholder="0" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Vencimento
+          <Input type="date" value={due} onChange={(event) => setDue(event.target.value)} className="mt-1 h-9 text-xs" />
+        </label>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button size="sm" onClick={submit}>Salvar</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+function FinanceView() {
+  const { items, loading, create, update, remove } = useExpenses();
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const planned = items.reduce((sum, row) => sum + row.planned, 0);
+  const paid = items.reduce((sum, row) => sum + row.paid, 0);
+
+  return <div className="space-y-7">
+    <PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Tenha clareza do que foi previsto, pago e ainda falta pagar." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Lançar despesa</Button>} />
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail="para os itens cadastrados" tone="rose" onClick={() => undefined} />
+      <Metric icon={Check} label="Total pago" value={money(paid)} detail={planned ? `${Math.round((paid / planned) * 100)}% do orçamento` : "sem despesas ainda"} tone="sage" onClick={() => undefined} />
+      <Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail="próximos vencimentos" tone="gold" onClick={() => undefined} />
+    </div>
+    {creating && <ExpenseForm title="Nova despesa" initial={{}} onSubmit={(values) => { void create(values); setCreating(false); }} onCancel={() => setCreating(false)} />}
+    {editing && items.some((item) => item.id === editing) && <ExpenseForm title="Editar despesa" initial={items.find((item) => item.id === editing)!} onSubmit={(values) => { void update(editing, values); setEditing(null); }} onCancel={() => setEditing(null)} />}
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="border-b border-border p-5 sm:p-6"><h2 className="font-serif text-2xl">Despesas da festa</h2><p className="mt-1 text-xs text-muted-foreground">Valores em reais brasileiros</p></div>
+      {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando despesas…</div>
+        : items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma despesa lançada ainda. Use “Lançar despesa”.</div>
+        : <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Categoria</th><th className="px-4 py-3 font-semibold">Previsto</th><th className="px-4 py-3 font-semibold">Pago</th><th className="px-4 py-3 font-semibold">Falta pagar</th><th className="px-4 py-3 font-semibold">Vencimento</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-6 py-3 font-semibold">Ações</th></tr></thead>
+              <tbody>{items.map((row) => <tr key={row.id} className="border-t border-border">
+                <td className="px-6 py-4 font-medium">{row.name}{row.description && <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">{row.description}</div>}</td>
+                <td className="px-4 py-4 text-muted-foreground">{money(row.planned)}</td>
+                <td className="px-4 py-4">{money(row.paid)}</td>
+                <td className="px-4 py-4 font-semibold text-primary">{money(row.planned - row.paid)}</td>
+                <td className="px-4 py-4 text-xs text-muted-foreground">{formatDue(row.due)}</td>
+                <td className="px-4 py-4"><Badge variant={row.status === "Parcial" ? "secondary" : row.status === "Pago" ? "default" : "outline"} className="text-[10px]">{row.status}</Badge></td>
+                <td className="px-6 py-4"><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" className="size-7" aria-label="Editar despesa" onClick={() => { setEditing(row.id); setCreating(false); }}><Pencil className="size-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" aria-label="Excluir despesa" onClick={() => { if (confirm(`Excluir ${row.name}?`)) void remove(row.id); }}><Trash2 className="size-3.5" /></Button>
+                </div></td>
+              </tr>)}</tbody>
+            </table>
+          </div>}
+    </section>
+  </div>;
+}
