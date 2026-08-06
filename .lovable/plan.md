@@ -1,31 +1,28 @@
-# Convidados: gravar família e responsável em tabelas de verdade
+# Convidados: recuperar os dados e gravar família e responsável em tabelas de verdade
 
-## O que eu verifiquei agora no banco
+## O que eu verifiquei agora
 
-- Existe **uma única tabela** (`app_state`) com **uma única linha** (`mirella15`). Tudo — 123 convidados e 10 tarefas — está dentro de um campo de texto JSON dessa linha.
-- Os dados **estão sendo salvos**, mas praticamente vazios nos campos que você quer:
-  - Responsável: **118 convidados sem responsável**, apenas **5 com "William"**.
-  - Família: **118 convidados sem família**, apenas **5 em "Tio Luiz Carlos Nogueira"**.
-- A planilha original não traz família nem responsável (só nome, telefone e os 5 blocos de colunas), então esses campos só serão preenchidos conforme você marcar no app.
-
-Ou seja: o app grava certo, mas o formato é um blocão de JSON — por isso você não consegue ver cada convidado com sua família e responsável na tela do banco.
+- No **banco** existe uma única tabela (`app_state`), uma única linha (`mirella15`), com tudo dentro de um campo JSON: 123 convidados, mas só **5 com família** e **5 com responsável**.
+- No **seu navegador** ainda existe a versão anterior (`mirella15-demo-v2`) com os mesmos **123 convidados: 123 com responsável e 121 com família**.
+- Ou seja: **o preenchimento não foi perdido** e você **não precisa refazer** a ligação de família e responsável. A gravação nova começou vazia e passou a ser a referência da tela.
 
 ## O que vou fazer
 
-1. **Criar tabelas reais**, uma linha por registro:
+1. **Recuperar** os dados do navegador (`mirella15-demo-v2`): família, responsável, confirmações e convites de cada convidado.
+2. **Criar tabelas reais**, uma linha por registro:
    - `hosts` (responsáveis): William, Késya, Mirella.
-   - `families` (famílias/grupos): inclui os grupos fixos Mirella Colégio, Mirella CNA, Mirella Vôlei, Mirella Igreja, e as famílias criadas a partir do titular.
+   - `families` (famílias/grupos): inclui Mirella Colégio, Mirella CNA, Mirella Vôlei, Mirella Igreja e as famílias criadas a partir do titular.
    - `guests` (convidados): nome, telefone, idade, criança, status, convite virtual/físico/pessoal, **família** e **responsável** ligados por referência (não texto solto).
    - `tasks` (tarefas), no mesmo padrão.
-2. **Migrar** os 123 convidados e as 10 tarefas de hoje para as novas tabelas, preservando o que já foi marcado (a família Nogueira e os 5 do William).
-3. **Ligar o app às novas tabelas**: cada mudança de responsável, família ou confirmação vira um `UPDATE` na linha daquele convidado — visível na tabela `guests` imediatamente.
-4. **Ajustar a tela de convidados** para atribuir família/responsável em lote (marcar vários e aplicar de uma vez), para não precisar preencher 118 dropdowns um a um.
-5. Aposentar o uso da `app_state` para convidados/tarefas depois da migração conferida.
+3. **Migrar** os dados recuperados para as novas tabelas, conferindo os totais (123 convidados, 123 com responsável, 121 com família) antes de concluir.
+4. **Ligar o app às novas tabelas**: cada mudança vira uma alteração na linha daquele convidado, visível na tabela `guests` na hora.
+5. **Proteção contra perda**: a tela só grava depois de carregar, e nunca substitui uma lista preenchida por uma lista vazia.
+6. Preencher no app as poucas pendências restantes (2 sem família).
 
 ## Detalhes técnicos
 
+- Recuperação: leitura de `localStorage['mirella15-demo-v2']` no navegador e importação única para o banco, com conferência do total antes de gravar.
 - Migração SQL cria `hosts`, `families`, `guests`, `tasks` com `GRANT` + RLS (leitura/escrita liberadas, igual ao modelo atual sem login).
-- `guests.family_id` e `guests.host_id` como chaves estrangeiras com `ON DELETE SET NULL`; índice em ambas.
-- `guests.is_primary` marca o titular da família.
-- Carga inicial: `INSERT` na própria migração a partir do estado atual do JSON.
-- Front: `src/lib/mirella-store.ts` passa a fazer leituras/escritas por tabela (mutações pontuais em vez de salvar o objeto inteiro), com atualização otimista na UI.
+- `guests.family_id` e `guests.host_id` como chaves estrangeiras `ON DELETE SET NULL`, com índice; `guests.is_primary` marca o titular da família.
+- Front: `src/lib/mirella-store.ts` passa a fazer mutações pontuais por linha em vez de salvar o objeto inteiro, com atualização otimista e guarda contra escrita vazia.
+- `app_state` fica preservada como backup até a conferência final.
