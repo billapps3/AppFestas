@@ -145,6 +145,7 @@ function FestaApp() {
   const [newGuest, setNewGuest] = useState("");
   const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -157,20 +158,55 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo-v3");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
-      if (parsed.tasks) setTasks(parsed.tasks);
-      if (parsed.guests) setGuests(parsed.guests.map((guest) => ({ ...guest, child: guest.child ?? (guest.age ?? 99) <= 10 })));
-    } catch {
-      window.localStorage.removeItem("mirella15-demo-v3");
-    }
+    let active = true;
+    const localState = () => {
+      const read = (key: string) => {
+        try {
+          return JSON.parse(window.localStorage.getItem(key) ?? "null") as { tasks?: Task[]; guests?: Guest[] } | null;
+        } catch {
+          return null;
+        }
+      };
+      const current = read("mirella15-demo-v3");
+      const previous = read("mirella15-demo-v2");
+      const base = (current?.guests ?? guestNames).map((guest) => ({ ...guest, child: guest.child ?? (guest.age ?? 99) <= 10 }));
+      // recupera responsáveis/famílias definidos em versões anteriores
+      const byId = new Map((previous?.guests ?? []).map((guest) => [guest.id, guest]));
+      const merged = base.map((guest) => {
+        const old = byId.get(guest.id);
+        return { ...guest, family: guest.family || old?.family || "", host: guest.host || old?.host || "" };
+      });
+      return { tasks: current?.tasks ?? previous?.tasks ?? taskSeed, guests: merged };
+    };
+
+    (async () => {
+      const { data } = await supabase.from("app_state").select("data").eq("id", STATE_ID).maybeSingle();
+      const remote = data?.data as { tasks?: Task[]; guests?: Guest[] } | undefined;
+      const hasRemote = remote?.guests?.length;
+      const state = hasRemote
+        ? { tasks: remote?.tasks ?? taskSeed, guests: remote!.guests!.map((guest) => ({ ...guest, child: guest.child ?? (guest.age ?? 99) <= 10 })) }
+        : localState();
+      if (!active) return;
+      setTasks(state.tasks);
+      setGuests(state.guests);
+      setLoaded(true);
+      if (!hasRemote) {
+        await supabase.from("app_state").upsert({ id: STATE_ID, data: state as never });
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     window.localStorage.setItem("mirella15-demo-v3", JSON.stringify({ tasks, guests }));
-  }, [tasks, guests]);
+    const timer = window.setTimeout(() => {
+      void supabase.from("app_state").upsert({ id: STATE_ID, data: { tasks, guests } as never });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [tasks, guests, loaded]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
