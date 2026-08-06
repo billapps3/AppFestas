@@ -246,6 +246,7 @@ function FestaApp() {
           <div className="flex items-center gap-2 text-sidebar-foreground/70"><CalendarDays className="size-4 text-primary" /><span className="text-xs font-medium">Data da festa</span></div>
           <div className="mt-3 font-serif text-[22px] text-sidebar-foreground">02 outubro 2026</div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-sidebar-foreground/50"><Clock3 className="size-3.5" />Faltam {daysLeft} dias</div>
+          <div className="mt-2 text-[11px] text-sidebar-foreground/45">{!loaded ? "Carregando dados salvos…" : saving ? "Salvando…" : "Tudo salvo na nuvem"}</div>
         </div>
         <div className="mt-4 flex items-center gap-3 px-2"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">M</span><div className="min-w-0"><div className="truncate text-xs font-medium text-sidebar-foreground">Mamãe da Mirella</div><div className="text-[11px] text-sidebar-foreground/45">Organizadora</div></div><MoreHorizontal className="ml-auto size-4 text-sidebar-foreground/40" /></div>
       </aside>
