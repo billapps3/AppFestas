@@ -96,8 +96,8 @@ const guestNames = [
   ["Manuela Castela", ""], ["Maria Eduarda Santiago", ""], ["Pietro Freitas", ""], ["Maria Eliza Barros", ""], ["Maria Clara", ""], ["Giullia", ""],
 ].map(([name, phone], index): Guest => ({
   id: index + 1,
-  name,
-  phone,
+  name: name ?? "Convidado",
+  phone: phone ?? "",
   status: index < 29 ? "Confirmado" : index < 37 ? "Aguardando" : "Não confirmado",
   virtual: index < 31,
   physical: index < 14,
