@@ -13,8 +13,8 @@ export type StoredTask = {
 export type StoredGuest = {
   id: number;
   name: string;
-  age?: number;
-  phone?: string;
+  age?: number | undefined;
+  phone?: string | undefined;
   status: string;
   virtual: boolean;
   physical: boolean;
