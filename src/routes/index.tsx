@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { importedGuests } from "@/lib/mirella-guests";
+import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import {
   ArrowUpRight,
   Bell,
@@ -142,6 +143,8 @@ function FestaApp() {
   const [newGuest, setNewGuest] = useState("");
   const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -154,20 +157,31 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo-v2");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
-      if (parsed.tasks) setTasks(parsed.tasks);
-      if (parsed.guests) setGuests(parsed.guests);
-    } catch {
-      window.localStorage.removeItem("mirella15-demo");
-    }
+    let active = true;
+    loadMirellaState<Task, Guest>()
+      .then((state) => {
+        if (!active || !state) return;
+        if (state.tasks?.length) setTasks(state.tasks);
+        if (state.guests?.length) setGuests(state.guests);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("mirella15-demo-v2", JSON.stringify({ tasks, guests }));
-  }, [tasks, guests]);
+    if (!loaded) return;
+    setSaveState("saving");
+    const timer = window.setTimeout(() => {
+      saveMirellaState({ tasks, guests })
+        .then(() => setSaveState("saved"))
+        .catch(() => setSaveState("error"));
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [tasks, guests, loaded]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
@@ -242,7 +256,7 @@ function FestaApp() {
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
           <div className="flex h-[72px] items-center justify-between px-5 sm:px-8 lg:px-10">
             <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div><div className="text-[11px] font-medium text-muted-foreground">Sexta-feira, 06 de agosto de 2026</div><div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? "Bom dia, mamãe" : navItems.find((item) => item.id === view)?.label}</div></div></div>
-            <div className="flex items-center gap-2 sm:gap-4"><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">M</span></div>
+            <div className="flex items-center gap-2 sm:gap-4"><span className="hidden text-xs text-muted-foreground sm:inline">{saveState === "saving" ? "Salvando…" : saveState === "saved" ? "Salvo na nuvem" : saveState === "error" ? "Erro ao salvar" : ""}</span><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">M</span></div>
           </div>
         </header>
 
