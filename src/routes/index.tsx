@@ -4,6 +4,7 @@ import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import {
   ArrowUpRight,
+  Baby,
   Bell,
   CalendarDays,
   Check,
@@ -70,6 +71,7 @@ type Guest = {
   virtual: boolean;
   physical: boolean;
   personal: boolean;
+  child: boolean;
   family: string;
   host: string;
 };
@@ -97,6 +99,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   virtual: index < 31,
   physical: index < 14,
   personal: index < 6,
+  child: typeof guest.age === "number" ? guest.age <= 10 : false,
   family: seedFamilies[guest.id] ?? "",
   host: "",
 }));
