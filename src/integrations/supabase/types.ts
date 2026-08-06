@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          created_at: string
+          description: string | null
+          due: string | null
+          id: string
+          name: string
+          paid: number
+          planned: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due?: string | null
+          id?: string
+          name: string
+          paid?: number
+          planned?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due?: string | null
+          id?: string
+          name?: string
+          paid?: number
+          planned?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       families: {
         Row: {
           created_at: string
@@ -143,6 +179,48 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          category: string | null
+          contact: string | null
+          created_at: string
+          due: string | null
+          id: string
+          name: string
+          notes: string | null
+          paid: number
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          category?: string | null
+          contact?: string | null
+          created_at?: string
+          due?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          paid?: number
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          category?: string | null
+          contact?: string | null
+          created_at?: string
+          due?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          paid?: number
+          status?: string
+          updated_at?: string
+          value?: number
         }
         Relationships: []
       }
