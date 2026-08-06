@@ -85,25 +85,12 @@ const taskSeed: Task[] = [
   { id: 10, name: "Confirmar decoração", area: "Fornecedores", owner: "Papai", due: "24 set", status: "Aguardando", priority: "Alta" },
 ];
 
-const guestNames = [
-  ["Vovô Jairo Ribeiro", "21991331523"], ["Vovó Miriam Ribeiro", ""], ["Ulysses Ribeiro", "21984742713"], ["Vovó Lúcia", "21988259494"],
-  ["Tio Jairo Ribeiro", "21987270041"], ["Tia Bianca Ribeiro", "21988270501"], ["Júlia Ribeiro", ""], ["Manuela Ribeiro", ""], ["Bruna Krieger", "21986128602"],
-  ["Valentina Almeida", ""], ["Rodolfo Almeida", ""], ["Tio Russell Ribeiro", "21991772462"], ["Tia Elisa Ribeiro", ""], ["Tio Luiz Carlos Nogueira", ""],
-  ["Anna Luisa Godinho", ""], ["Maria Eduarda Godinho", ""], ["Anna Julia Godinho", ""], ["Tia Elaine Nogueira", ""], ["Tio Fábio Almeida", ""],
-  ["Frederico Almeida", ""], ["Noah Almeida", ""], ["Marcelle Assayag", ""], ["Marcos Xavier", ""], ["Matheus", ""], ["Tia Noemi", ""],
-  ["Vânia", ""], ["Ana Beatriz", ""], ["Tio Daniel Villar", ""], ["Tia Miriam", ""], ["Rebecca Ribeiro", ""], ["Carolina Ribeiro", ""],
-  ["Luiz Ricardo Clemencio", ""], ["Giovana Clemencio", ""], ["Nathalia Cincinatus", ""], ["Davi Cincinatus", ""], ["Noah Cincinatus", ""],
-  ["Isabelle Cincinatus", ""], ["Theo Cincinatus", ""], ["Amanda Neves", ""], ["Arthur Neves", ""], ["Camille Monteiro", ""],
-  ["Manuela Castela", ""], ["Maria Eduarda Santiago", ""], ["Pietro Freitas", ""], ["Maria Eliza Barros", ""], ["Maria Clara", ""], ["Giullia", ""],
-].map(([name, phone], index): Guest => ({
-  id: index + 1,
-  name: name ?? "Convidado",
-  phone: phone ?? "",
-  status: index < 29 ? "Confirmado" : index < 37 ? "Aguardando" : "Não confirmado",
+const guestNames: Guest[] = importedGuests.map((guest, index) => ({
+  ...guest,
+  status: index < 72 ? "Confirmado" : index < 98 ? "Aguardando" : "Não confirmado",
   virtual: index < 31,
   physical: index < 14,
   personal: index < 6,
-  family: index < 17 ? "Família Ribeiro" : index < 25 ? "Família Almeida" : index < 38 ? "Família Cincinatus" : "",
 }));
 
 const suppliers = [
