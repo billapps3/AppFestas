@@ -155,6 +155,7 @@ export type Database = {
           legacy_id: number | null
           name: string
           owner: string | null
+          parent_legacy_id: number | null
           priority: string
           status: string
           updated_at: string
@@ -167,6 +168,7 @@ export type Database = {
           legacy_id?: number | null
           name: string
           owner?: string | null
+          parent_legacy_id?: number | null
           priority?: string
           status?: string
           updated_at?: string
@@ -179,6 +181,7 @@ export type Database = {
           legacy_id?: number | null
           name?: string
           owner?: string | null
+          parent_legacy_id?: number | null
           priority?: string
           status?: string
           updated_at?: string

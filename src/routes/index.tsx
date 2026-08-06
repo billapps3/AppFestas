@@ -20,11 +20,13 @@ import {
   MoreHorizontal,
   PackageCheck,
   PanelLeftClose,
+  Pencil,
   Plus,
   Search,
   Send,
   Sparkles,
   Store,
+  Trash2,
   Users,
   WalletCards,
   X,
@@ -60,6 +62,7 @@ type Task = {
   due: string;
   status: TaskStatus;
   priority: "Alta" | "Média" | "Baixa";
+  parent?: number | null;
 };
 
 type Guest = {
@@ -77,6 +80,9 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
+const taskOwners = ["William", "Késya", "Mirella", "Mamãe", "Papai"];
+const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
+const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
@@ -198,6 +204,18 @@ function FestaApp() {
     setTasks((current) => current.map((task) => task.id === id ? { ...task, status: task.status === "Concluído" ? "Em andamento" : "Concluído" } : task));
   };
 
+  const addTask = (task: Omit<Task, "id">) => {
+    setTasks((current) => [...current, { ...task, id: Math.max(0, ...current.map((item) => item.id)) + 1 }]);
+  };
+
+  const updateTask = (id: number, patch: Partial<Task>) => {
+    setTasks((current) => current.map((task) => task.id === id ? { ...task, ...patch } : task));
+  };
+
+  const deleteTask = (id: number) => {
+    setTasks((current) => current.filter((task) => task.id !== id && task.parent !== id));
+  };
+
   const changeGuestStatus = (id: number, status: GuestStatus) => {
     setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, status } : guest));
   };
@@ -265,7 +283,7 @@ function FestaApp() {
 
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
-          {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} />}
+          {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
           {view === "suppliers" && <SuppliersView />}
           {view === "finance" && <FinanceView />}
@@ -333,7 +351,7 @@ function SectionHeading({ eyebrow, title, action, onClick }: { eyebrow: string; 
 }
 
 function TaskRow({ task, onStatus, first = false }: { task: Task; onStatus: (id: number) => void; first?: boolean }) {
-  return <div className={`flex items-center gap-3 py-3.5 ${!first ? "border-t border-border" : ""}`}><button onClick={() => onStatus(task.id)} aria-label={`Marcar ${task.name}`} className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${task.status === "Concluído" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>{task.status === "Concluído" && <Check className="size-3" />}</button><div className="min-w-0 flex-1"><div className={`truncate text-sm font-medium ${task.status === "Concluído" ? "text-muted-foreground line-through" : ""}`}>{task.name}</div><div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground"><span>{task.area}</span><span className="size-1 rounded-full bg-border" /><span>{task.owner}</span></div></div><div className="hidden text-right sm:block"><div className="text-xs font-medium">{task.due}</div><div className={`mt-1 text-[10px] ${task.priority === "Alta" ? "text-primary" : "text-muted-foreground"}`}>{task.priority} prioridade</div></div><Badge variant={task.status === "Concluído" ? "secondary" : task.status === "Em andamento" ? "default" : "outline"} className="hidden text-[10px] font-medium sm:inline-flex">{task.status}</Badge></div>;
+  return <div className={`flex items-center gap-3 py-3.5 ${!first ? "border-t border-border" : ""}`}><button onClick={() => onStatus(task.id)} aria-label={`Marcar ${task.name}`} className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${task.status === "Concluído" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>{task.status === "Concluído" && <Check className="size-3" />}</button><div className="min-w-0 flex-1"><div className={`truncate text-sm font-medium ${task.status === "Concluído" ? "text-muted-foreground line-through" : ""}`}>{task.name}</div><div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground"><span>{task.area}</span><span className="size-1 rounded-full bg-border" /><span>{task.owner}</span></div></div><div className="hidden text-right sm:block"><div className="text-xs font-medium">{formatDue(task.due)}</div><div className={`mt-1 text-[10px] ${task.priority === "Alta" ? "text-primary" : "text-muted-foreground"}`}>{task.priority} prioridade</div></div><Badge variant={task.status === "Concluído" ? "secondary" : task.status === "Em andamento" ? "default" : "outline"} className="hidden text-[10px] font-medium sm:inline-flex">{task.status}</Badge></div>;
 }
 
 function Legend({ color, label, value }: { color: string; label: string; value: number }) { return <div className="flex items-center gap-2"><span className={`size-2 rounded-full ${color}`} /><span className="w-24 text-muted-foreground">{label}</span><span className="font-semibold">{value}</span></div>; }
@@ -341,10 +359,174 @@ function Attention({ icon: Icon, title, text }: { icon: typeof Clock3; title: st
 
 function PageIntro({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) { return <div className="flex flex-col gap-5 border-b border-border pb-7 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{eyebrow}</div><h1 className="mt-2 font-serif text-[36px] leading-none">{title}</h1><p className="mt-3 max-w-xl text-sm text-muted-foreground">{description}</p></div>{action}</div>; }
 
-function TasksView({ tasks, onTaskStatus }: { tasks: Task[]; onTaskStatus: (id: number) => void }) {
+function formatDue(due: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+    const [year, month, day] = due.split("-");
+    return `${day}/${month}/${year}`;
+  }
+  return due || "sem data";
+}
+
+const fieldClass = "h-9 w-full rounded-md border border-border bg-background px-2 text-xs";
+
+function TaskForm({ title, initial, areas, parents, onSubmit, onCancel }: { title: string; initial: Partial<Task>; areas: string[]; parents: Task[]; onSubmit: (values: Omit<Task, "id">) => void; onCancel: () => void }) {
+  const [name, setName] = useState(initial.name ?? "");
+  const [area, setArea] = useState(initial.area ?? "");
+  const [owner, setOwner] = useState(initial.owner ?? "");
+  const [due, setDue] = useState(/^\d{4}-\d{2}-\d{2}$/.test(initial.due ?? "") ? initial.due! : "");
+  const [status, setStatus] = useState<TaskStatus>(initial.status ?? "Aguardando");
+  const [priority, setPriority] = useState<Task["priority"]>(initial.priority ?? "Média");
+  const [parent, setParent] = useState<string>(initial.parent ? String(initial.parent) : "");
+
+  const submit = () => {
+    if (!name.trim() || !area.trim()) return;
+    onSubmit({ name: name.trim(), area: area.trim(), owner: owner.trim(), due, status, priority, parent: parent ? Number(parent) : null });
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+      <div className="text-xs font-semibold text-primary">{title}</div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="text-[11px] text-muted-foreground">Tarefa
+          <Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome da tarefa" className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Tema
+          <Input list="task-areas" value={area} onChange={(event) => setArea(event.target.value)} placeholder="Ex.: Convites" className="mt-1 h-9 text-xs" />
+          <datalist id="task-areas">{areas.map((item) => <option key={item} value={item} />)}</datalist>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Responsável
+          <Input list="task-owners" value={owner} onChange={(event) => setOwner(event.target.value)} placeholder="Quem faz" className="mt-1 h-9 text-xs" />
+          <datalist id="task-owners">{taskOwners.map((item) => <option key={item} value={item} />)}</datalist>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Data limite
+          <Input type="date" value={due} onChange={(event) => setDue(event.target.value)} className="mt-1 h-9 text-xs" />
+        </label>
+        <label className="text-[11px] text-muted-foreground">Status
+          <select value={status} onChange={(event) => setStatus(event.target.value as TaskStatus)} className={`mt-1 ${fieldClass}`}>{taskStatuses.map((item) => <option key={item}>{item}</option>)}</select>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Prioridade
+          <select value={priority} onChange={(event) => setPriority(event.target.value as Task["priority"])} className={`mt-1 ${fieldClass}`}>{taskPriorities.map((item) => <option key={item}>{item}</option>)}</select>
+        </label>
+        <label className="text-[11px] text-muted-foreground">Desdobramento de
+          <select value={parent} onChange={(event) => setParent(event.target.value)} className={`mt-1 ${fieldClass}`}>
+            <option value="">Tarefa principal do tema</option>
+            {parents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button size="sm" onClick={submit}>Salvar</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
+function TaskLine({ task, child = false, onStatus, onEdit, onDelete, onAddChild }: { task: Task; child?: boolean; onStatus: (id: number) => void; onEdit: () => void; onDelete: () => void; onAddChild?: () => void }) {
+  return (
+    <div className={`flex items-center gap-3 border-t border-border py-3 ${child ? "pl-6 sm:pl-10" : ""}`}>
+      <button onClick={() => onStatus(task.id)} aria-label={`Marcar ${task.name}`} className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${task.status === "Concluído" ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>{task.status === "Concluído" && <Check className="size-3" />}</button>
+      <div className="min-w-0 flex-1">
+        <div className={`truncate text-sm font-medium ${task.status === "Concluído" ? "text-muted-foreground line-through" : ""}`}>{task.name}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span>{task.owner || "sem responsável"}</span><span className="size-1 rounded-full bg-border" />
+          <span>Até {formatDue(task.due)}</span><span className="size-1 rounded-full bg-border" />
+          <span className={task.priority === "Alta" ? "text-primary" : ""}>{task.priority} prioridade</span>
+        </div>
+      </div>
+      <Badge variant={task.status === "Concluído" ? "secondary" : task.status === "Em andamento" ? "default" : "outline"} className="hidden text-[10px] font-medium sm:inline-flex">{task.status}</Badge>
+      <div className="flex shrink-0 items-center gap-1">
+        {onAddChild && <Button size="icon" variant="ghost" className="size-8" aria-label={`Adicionar desdobramento de ${task.name}`} title="Adicionar desdobramento" onClick={onAddChild}><Plus className="size-4" /></Button>}
+        <Button size="icon" variant="ghost" className="size-8" aria-label={`Editar ${task.name}`} title="Editar" onClick={onEdit}><Pencil className="size-4" /></Button>
+        <Button size="icon" variant="ghost" className="size-8 text-destructive" aria-label={`Excluir ${task.name}`} title="Excluir" onClick={onDelete}><Trash2 className="size-4" /></Button>
+      </div>
+    </div>
+  );
+}
+
+function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: Task[]; onTaskStatus: (id: number) => void; onAdd: (task: Omit<Task, "id">) => void; onUpdate: (id: number, patch: Partial<Task>) => void; onDelete: (id: number) => void }) {
   const [filter, setFilter] = useState("Todas");
-  const filtered = filter === "Todas" ? tasks : tasks.filter((task) => task.status === filter);
-  return <div className="space-y-7"><PageIntro eyebrow="Planejamento" title="Tarefas" description="Uma visão simples do que já foi feito e do próximo passo da festa." action={<Button><Plus />Nova tarefa</Button>} /><div className="grid gap-4 sm:grid-cols-3"><Metric icon={ClipboardCheck} label="Concluídas" value={`${tasks.filter((task) => task.status === "Concluído").length}`} detail="tarefas finalizadas" tone="rose" onClick={() => setFilter("Concluído")} /><Metric icon={Clock3} label="Em andamento" value={`${tasks.filter((task) => task.status === "Em andamento").length}`} detail="precisam de atenção" tone="gold" onClick={() => setFilter("Em andamento")} /><Metric icon={Bell} label="Aguardando" value={`${tasks.filter((task) => task.status === "Aguardando").length}`} detail="dependem de uma ação" tone="sage" onClick={() => setFilter("Aguardando")} /></div><section className="rounded-xl border border-border bg-card p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div><span className="text-xs text-muted-foreground">{filtered.length} tarefas exibidas</span></div><div className="mt-5">{filtered.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section></div>;
+  const [editing, setEditing] = useState<number | null>(null);
+  const [creating, setCreating] = useState<{ area: string; parent: number | null } | null>(null);
+
+  const areas = useMemo(() => Array.from(new Set(tasks.map((task) => task.area).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR")), [tasks]);
+  const matches = (task: Task) => filter === "Todas" || task.status === filter;
+
+  const themes = useMemo(() => {
+    return areas
+      .map((area) => {
+        const inArea = tasks.filter((task) => task.area === area);
+        const roots = inArea.filter((task) => !task.parent || !inArea.some((item) => item.id === task.parent));
+        const groups = roots
+          .map((root) => ({ root, children: inArea.filter((task) => task.parent === root.id) }))
+          .filter((group) => matches(group.root) || group.children.some(matches));
+        return { area, groups, total: inArea.length };
+      })
+      .filter((theme) => theme.groups.length > 0);
+  }, [tasks, areas, filter]);
+
+  const visible = tasks.filter(matches).length;
+
+  return (
+    <div className="space-y-7">
+      <PageIntro eyebrow="Planejamento" title="Tarefas" description="Tarefas organizadas por tema, com desdobramentos, responsável e data limite." action={<Button onClick={() => { setEditing(null); setCreating(creating ? null : { area: "", parent: null }); }}>{creating ? <X /> : <Plus />}{creating ? "Fechar" : "Nova tarefa"}</Button>} />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Metric icon={ClipboardCheck} label="Concluídas" value={`${tasks.filter((task) => task.status === "Concluído").length}`} detail="tarefas finalizadas" tone="rose" onClick={() => setFilter("Concluído")} />
+        <Metric icon={Clock3} label="Em andamento" value={`${tasks.filter((task) => task.status === "Em andamento").length}`} detail="precisam de atenção" tone="gold" onClick={() => setFilter("Em andamento")} />
+        <Metric icon={Bell} label="Aguardando" value={`${tasks.filter((task) => task.status === "Aguardando").length}`} detail="dependem de uma ação" tone="sage" onClick={() => setFilter("Aguardando")} />
+      </div>
+
+      {creating && (
+        <TaskForm
+          title={creating.parent ? "Novo desdobramento" : creating.area ? `Nova tarefa em ${creating.area}` : "Nova tarefa"}
+          initial={{ area: creating.area, parent: creating.parent }}
+          areas={areas}
+          parents={tasks.filter((task) => !task.parent && (!creating.area || task.area === creating.area))}
+          onSubmit={(values) => { onAdd(values); setCreating(null); }}
+          onCancel={() => setCreating(null)}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div>
+        <span className="text-xs text-muted-foreground">{visible} tarefas exibidas</span>
+      </div>
+
+      <div className="space-y-5">
+        {themes.map((theme) => (
+          <section key={theme.area} className="rounded-xl border border-border bg-card p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Tema</div>
+                <h2 className="mt-1 font-serif text-[22px]">{theme.area}</h2>
+              </div>
+              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => { setEditing(null); setCreating({ area: theme.area, parent: null }); }}><Plus className="size-3.5" />Tarefa neste tema</Button>
+            </div>
+            <div className="mt-4">
+              {theme.groups.map((group) => (
+                <div key={group.root.id}>
+                  {editing === group.root.id ? (
+                    <div className="py-3"><TaskForm title={`Editar ${group.root.name}`} initial={group.root} areas={areas} parents={tasks.filter((task) => !task.parent && task.id !== group.root.id)} onSubmit={(values) => { onUpdate(group.root.id, values); setEditing(null); }} onCancel={() => setEditing(null)} /></div>
+                  ) : (
+                    <TaskLine task={group.root} onStatus={onTaskStatus} onEdit={() => { setCreating(null); setEditing(group.root.id); }} onDelete={() => onDelete(group.root.id)} onAddChild={() => { setEditing(null); setCreating({ area: theme.area, parent: group.root.id }); }} />
+                  )}
+                  {group.children.filter(matches).map((child) => (
+                    editing === child.id ? (
+                      <div key={child.id} className="py-3 pl-6 sm:pl-10"><TaskForm title={`Editar ${child.name}`} initial={child} areas={areas} parents={tasks.filter((task) => !task.parent && task.id !== child.id)} onSubmit={(values) => { onUpdate(child.id, values); setEditing(null); }} onCancel={() => setEditing(null)} /></div>
+                    ) : (
+                      <TaskLine key={child.id} task={child} child onStatus={onTaskStatus} onEdit={() => { setCreating(null); setEditing(child.id); }} onDelete={() => onDelete(child.id)} />
+                    )
+                  ))}
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+        {themes.length === 0 && <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhuma tarefa neste filtro.</p>}
+      </div>
+    </div>
+  );
 }
 
 type GuestsViewProps = {
