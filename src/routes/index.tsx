@@ -498,6 +498,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
+            {isChild(guest) && <Badge variant="secondary" className="text-[9px]">Criança · não pagante</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
         </div>
@@ -508,6 +509,14 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
           <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
           <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
         </div>
+
+        <button
+          onClick={() => onUpdate(guest.id, { child: !isChild(guest) })}
+          title="Criança de até 10 anos (não pagante)"
+          className={`rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${isChild(guest) ? "border-primary/25 bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"}`}
+        >
+          Criança até 10
+        </button>
 
         <select
           aria-label={`Família de ${guest.name}`}
