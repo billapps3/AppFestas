@@ -402,8 +402,12 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">{stat.label}</div>
             <div className="mt-2 font-serif text-3xl">{stat.value}</div>
+            {"detail" in stat && <div className="mt-1 text-[11px] text-muted-foreground">{stat.detail}</div>}
           </div>
         ))}
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, percent)}%` }} />
       </div>
 
       <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
