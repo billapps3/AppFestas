@@ -394,8 +394,10 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Crianças até 10 anos", value: guests.filter((guest) => guest.child).length },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Grupos familiares", value: familyOptions.length },
+    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado").length },
   ];
 
   return (
@@ -412,7 +414,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           <Button onClick={addGuest}>Adicionar</Button>
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">{stat.label}</div>
@@ -508,6 +510,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{guest.name}</span>
             {guest.age && <span className="text-xs text-muted-foreground">({guest.age} anos)</span>}
+            {guest.child && <Badge variant="secondary" className="text-[9px]">Criança até 10</Badge>}
             {isPrincipal && <Badge className="text-[9px]">Principal</Badge>}
           </div>
           <div className="mt-0.5 text-[11px] text-muted-foreground">#{String(guest.id).padStart(3, "0")}{guest.phone && ` · ${guest.phone}`}</div>
@@ -518,6 +521,7 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
         <div className="flex gap-1">
           <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
           <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          <button onClick={() => onUpdate(guest.id, { child: !guest.child })} aria-pressed={guest.child} title="Criança até 10 anos (não pagante)" className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
         <select
