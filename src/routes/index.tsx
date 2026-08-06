@@ -143,6 +143,8 @@ function FestaApp() {
   const [newGuest, setNewGuest] = useState("");
   const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -155,20 +157,31 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("mirella15-demo-v2");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as { tasks?: Task[]; guests?: Guest[] };
-      if (parsed.tasks) setTasks(parsed.tasks);
-      if (parsed.guests) setGuests(parsed.guests);
-    } catch {
-      window.localStorage.removeItem("mirella15-demo");
-    }
+    let active = true;
+    loadMirellaState<Task, Guest>()
+      .then((state) => {
+        if (!active || !state) return;
+        if (state.tasks?.length) setTasks(state.tasks);
+        if (state.guests?.length) setGuests(state.guests);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("mirella15-demo-v2", JSON.stringify({ tasks, guests }));
-  }, [tasks, guests]);
+    if (!loaded) return;
+    setSaveState("saving");
+    const timer = window.setTimeout(() => {
+      saveMirellaState({ tasks, guests })
+        .then(() => setSaveState("saved"))
+        .catch(() => setSaveState("error"));
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [tasks, guests, loaded]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
