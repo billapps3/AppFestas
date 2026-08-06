@@ -199,7 +199,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, family: "", host: "", child: false }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
