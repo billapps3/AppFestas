@@ -35,6 +35,156 @@ export type Database = {
         }
         Relationships: []
       }
+      families: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guests: {
+        Row: {
+          age: number | null
+          created_at: string
+          family_id: string | null
+          host_id: string | null
+          id: string
+          invite_personal: boolean
+          invite_physical: boolean
+          invite_virtual: boolean
+          is_child: boolean
+          is_primary: boolean
+          legacy_id: number | null
+          name: string
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          family_id?: string | null
+          host_id?: string | null
+          id?: string
+          invite_personal?: boolean
+          invite_physical?: boolean
+          invite_virtual?: boolean
+          is_child?: boolean
+          is_primary?: boolean
+          legacy_id?: number | null
+          name: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          family_id?: string | null
+          host_id?: string | null
+          id?: string
+          invite_personal?: boolean
+          invite_physical?: boolean
+          invite_virtual?: boolean
+          is_child?: boolean
+          is_primary?: boolean
+          legacy_id?: number | null
+          name?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guests_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guests_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "hosts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hosts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          area: string | null
+          created_at: string
+          due: string | null
+          id: string
+          legacy_id: number | null
+          name: string
+          owner: string | null
+          priority: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          due?: string | null
+          id?: string
+          legacy_id?: number | null
+          name: string
+          owner?: string | null
+          priority?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          due?: string | null
+          id?: string
+          legacy_id?: number | null
+          name?: string
+          owner?: string | null
+          priority?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
