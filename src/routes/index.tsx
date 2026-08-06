@@ -72,7 +72,13 @@ type Guest = {
   personal: boolean;
   family: string;
   host: string;
+  child?: boolean;
 };
+
+// Criança de até 10 anos não é pagante. Quando ainda não foi marcada manualmente,
+// usamos a idade importada como sugestão — nada é gravado até você alterar.
+const isChild = (guest: Guest) => guest.child ?? (guest.age !== undefined && guest.age <= 10);
+const INVITE_TARGET = 110;
 
 const hosts = ["William", "Késya", "Mirella"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
