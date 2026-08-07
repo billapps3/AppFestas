@@ -81,7 +81,7 @@ function AuthPage() {
         <div className="mt-6 space-y-3">
           {mode === "criar" && (
             <label className="block text-[11px] text-muted-foreground">Como quer ser chamada(o)
-              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Mamãe da Mirella" className="mt-1 h-10 text-sm" />
+              <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: William, Késya ou Mirella" className="mt-1 h-10 text-sm" />
             </label>
           )}
           <label className="block text-[11px] text-muted-foreground">E-mail

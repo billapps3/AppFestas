@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
+import { useInstallments } from "@/lib/mirella-installments";
+import { InstallmentsPanel } from "@/components/installments-panel";
 import {
   ArrowUpRight,
   Baby,
@@ -111,20 +113,20 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
-const taskOwners = ["William", "Késya", "Mirella", "Mamãe", "Papai"];
+const taskOwners = ["William", "Késya", "Mirella"];
 const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
 const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
-  { id: 1, name: "Definir identidade visual", area: "Preparação", owner: "Mamãe", due: "08 ago", status: "Concluído", priority: "Alta" },
-  { id: 2, name: "Lista de convidados", area: "Convidados", owner: "Mamãe", due: "12 ago", status: "Concluído", priority: "Alta" },
+  { id: 1, name: "Definir identidade visual", area: "Preparação", owner: "Késya", due: "08 ago", status: "Concluído", priority: "Alta" },
+  { id: 2, name: "Lista de convidados", area: "Convidados", owner: "Késya", due: "12 ago", status: "Concluído", priority: "Alta" },
   { id: 3, name: "Escolher convite físico", area: "Convites físicos", owner: "Mirella", due: "18 ago", status: "Em andamento", priority: "Alta" },
-  { id: 4, name: "Enviar convites virtuais", area: "Convites virtuais", owner: "Mamãe", due: "25 ago", status: "Aguardando", priority: "Alta" },
+  { id: 4, name: "Enviar convites virtuais", area: "Convites virtuais", owner: "Késya", due: "25 ago", status: "Aguardando", priority: "Alta" },
   { id: 5, name: "Contratar buffet", area: "Fornecedores", owner: "Papai", due: "30 ago", status: "Em andamento", priority: "Alta" },
   { id: 6, name: "Escolher vestido", area: "Produção", owner: "Mirella", due: "05 set", status: "Em andamento", priority: "Média" },
-  { id: 7, name: "Produção dos chinelos", area: "Lembranças", owner: "Mamãe", due: "10 set", status: "Aguardando", priority: "Média" },
+  { id: 7, name: "Produção dos chinelos", area: "Lembranças", owner: "Késya", due: "10 set", status: "Aguardando", priority: "Média" },
   { id: 8, name: "Fechar playlist com DJ", area: "Festa", owner: "Mirella", due: "18 set", status: "Aguardando", priority: "Baixa" },
   { id: 9, name: "Prova do vestido", area: "Produção", owner: "Mirella", due: "20 set", status: "Aguardando", priority: "Média" },
   { id: 10, name: "Confirmar decoração", area: "Fornecedores", owner: "Papai", due: "24 set", status: "Aguardando", priority: "Alta" },
@@ -286,13 +288,13 @@ function FestaApp() {
           <div className="mt-3 font-serif text-[22px] text-sidebar-foreground">02 outubro 2026</div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-sidebar-foreground/50"><Clock3 className="size-3.5" />Faltam {daysLeft} dias</div>
         </div>
-        <div className="mt-4 flex items-center gap-3 px-2"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">M</span><div className="min-w-0"><div className="truncate text-xs font-medium text-sidebar-foreground">Mamãe da Mirella</div><div className="text-[11px] text-sidebar-foreground/45">Organizadora</div></div><MoreHorizontal className="ml-auto size-4 text-sidebar-foreground/40" /></div>
+        <div className="mt-4 flex items-center gap-3 px-2"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span><div className="min-w-0"><div className="truncate text-xs font-medium text-sidebar-foreground">{session.name}</div><div className="text-[11px] text-sidebar-foreground/45">Painel da festa</div></div><MoreHorizontal className="ml-auto size-4 text-sidebar-foreground/40" /></div>
       </aside>
 
       <div className="lg:pl-[252px]">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
           <div className="flex h-[72px] items-center justify-between px-5 sm:px-8 lg:px-10">
-            <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div><div className="text-[11px] font-medium text-muted-foreground">Sexta-feira, 06 de agosto de 2026</div><div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? "Bom dia, mamãe" : navItems.find((item) => item.id === view)?.label}</div></div></div>
+            <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div><div className="text-[11px] font-medium text-muted-foreground">Sexta-feira, 06 de agosto de 2026</div><div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? `Olá, ${(session.name ?? "").split(" ")[0] || "família"}` : navItems.find((item) => item.id === view)?.label}</div></div></div>
             <div className="flex items-center gap-2 sm:gap-4"><span className="hidden text-xs text-muted-foreground sm:inline">{saveState === "saving" ? "Salvando…" : saveState === "saved" ? "Salvo na nuvem" : saveState === "error" ? "Erro ao salvar" : ""}</span><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="hidden text-xs font-medium sm:inline">{session.name}</span><Button variant="ghost" size="sm" className="text-xs" onClick={() => { void supabase.auth.signOut(); }}>Sair</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span></div>
           </div>
         </header>
@@ -900,6 +902,7 @@ function SupplierForm({ title, initial, onSubmit, onCancel }: { title: string; i
 
 function SuppliersView() {
   const { items, loading, create, update, remove } = useSuppliers();
+  const parcels = useInstallments();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -935,6 +938,14 @@ function SuppliersView() {
                 <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(item.value - item.paid)}</span></div>
                 {item.contact && <div className="mt-2 text-[11px] text-muted-foreground">{item.contact}</div>}
                 <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {formatDue(item.due)}</div>
+                <InstallmentsPanel
+                  parent={{ supplierId: item.id }}
+                  items={parcels.forSupplier(item.id)}
+                  onCreate={(values) => void parcels.create(values)}
+                  onSettle={(parcel, paidAt, payer) => void parcels.settle(parcel, paidAt, payer)}
+                  onReopen={(parcel) => void parcels.reopen(parcel)}
+                  onRemove={(parcel) => { if (confirm("Excluir esta parcela?")) void parcels.remove(parcel); }}
+                />
               </div>)}
         </section>}
   </div>;
@@ -986,6 +997,8 @@ function ExpenseForm({ title, initial, onSubmit, onCancel }: { title: string; in
 
 function FinanceView() {
   const { items, loading, create, update, remove } = useExpenses();
+  const parcels = useInstallments();
+  const [openParcels, setOpenParcels] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -1018,8 +1031,23 @@ function FinanceView() {
                 <td className="px-6 py-4"><div className="flex gap-1">
                   <Button size="icon" variant="ghost" className="size-7" aria-label="Editar despesa" onClick={() => { setEditing(row.id); setCreating(false); }}><Pencil className="size-3.5" /></Button>
                   <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" aria-label="Excluir despesa" onClick={() => { if (confirm(`Excluir ${row.name}?`)) void remove(row.id); }}><Trash2 className="size-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setOpenParcels((current) => current === row.id ? null : row.id)}>{openParcels === row.id ? "Fechar" : `Prestações (${parcels.forExpense(row.id).length})`}</Button>
                 </div></td>
-              </tr>)}</tbody>
+              </tr>).flatMap((node, index) => {
+                const row = items[index]!;
+                return openParcels === row.id
+                  ? [node, <tr key={`${row.id}-parcels`} className="border-t border-border bg-muted/20"><td colSpan={7} className="px-6 pb-4 pt-0">
+                      <InstallmentsPanel
+                        parent={{ expenseId: row.id }}
+                        items={parcels.forExpense(row.id)}
+                        onCreate={(values) => void parcels.create(values)}
+                        onSettle={(parcel, paidAt, payer) => void parcels.settle(parcel, paidAt, payer)}
+                        onReopen={(parcel) => void parcels.reopen(parcel)}
+                        onRemove={(parcel) => { if (confirm("Excluir esta parcela?")) void parcels.remove(parcel); }}
+                      />
+                    </td></tr>]
+                  : [node];
+              })}</tbody>
             </table>
           </div>}
     </section>
