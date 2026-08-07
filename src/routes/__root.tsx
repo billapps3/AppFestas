@@ -80,6 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Família Mirella" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { title: "Mirella 15 — Organização da festa" },
+      { property: "og:title", content: "Mirella 15 — Organização da festa" },
+      { name: "twitter:title", content: "Mirella 15 — Organização da festa" },
+      { name: "description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
+      { property: "og:description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
+      { name: "twitter:description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/71e0e5497d12d092308bba6e8c63ac81/id-preview-dae99a3e--58d33dfd-b190-4b71-bb09-21f2493b5cdd.lovable.app-1786065526242.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/71e0e5497d12d092308bba6e8c63ac81/id-preview-dae99a3e--58d33dfd-b190-4b71-bb09-21f2493b5cdd.lovable.app-1786065526242.png" },
     ],
     links: [
       {

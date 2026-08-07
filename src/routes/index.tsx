@@ -48,7 +48,7 @@ export const Route = createFileRoute("/")({
       { title: "Mirella 15 — Organização da festa" },
       { name: "description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
       { property: "og:title", content: "Mirella 15 — Organização da festa" },
-      { property: "og:description", content: "Tudo da festa da Mirella em um só lugar." },
+      { property: "og:description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
