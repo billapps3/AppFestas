@@ -321,7 +321,7 @@ function FestaApp() {
 
         <div className="mt-10 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/45">Organização</div>
         <nav className="mt-3 space-y-1">
-          {navItems.map(({ id, label, icon: Icon }) => (
+          {navItems.filter((item) => session.canFinance || (item.id !== "suppliers" && item.id !== "finance")).map(({ id, label, icon: Icon }) => (
             <Button key={id} variant="ghost" onClick={() => selectView(id)} className={`w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-[13px] ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" : "text-sidebar-foreground/65 hover:text-sidebar-foreground"}`}>
               <Icon className="size-[17px]" />{label}
               {id === "tasks" && <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{tasks.length - completedTasks}</span>}
@@ -348,14 +348,17 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && (
             <div className="space-y-6">
-              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} canFinance={session.canFinance} />
               <PushPanel isAdmin={session.isAdmin} />
             </div>
           )}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
-          {view === "suppliers" && <SuppliersView />}
-          {view === "finance" && <FinanceView />}
+          {view === "suppliers" && session.canFinance && <SuppliersView />}
+          {view === "finance" && session.canFinance && <FinanceView />}
+          {(view === "suppliers" || view === "finance") && !session.canFinance && (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Este módulo não está disponível no seu perfil.</div>
+          )}
         </main>
       </div>
     </div>
