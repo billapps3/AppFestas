@@ -238,7 +238,7 @@ function FestaApp() {
 
   const rsvpPending = useMemo(() => {
     const today = todayISO();
-    return Object.entries(familyInvites)
+    const families = Object.entries(familyInvites)
       .filter(([, invite]) => invite.deadline && invite.deadline < today)
       .filter(([family]) => !isGroupFamily(family))
       .map(([family, invite]) => ({
@@ -246,8 +246,11 @@ function FestaApp() {
         deadline: invite.deadline,
         waiting: guests.filter((guest) => guest.family === family && guest.status === "Aguardando").length,
       }))
-      .filter((item) => item.waiting > 0)
-      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+      .filter((item) => item.waiting > 0);
+    const individuals = guests
+      .filter((guest) => (!guest.family || isGroupFamily(guest.family)) && guest.deadline && guest.deadline < today && guest.status === "Aguardando")
+      .map((guest) => ({ family: guest.family ? `${guest.name} · ${guest.family}` : guest.name, deadline: guest.deadline, waiting: 1 }));
+    return [...families, ...individuals].sort((a, b) => a.deadline.localeCompare(b.deadline));
   }, [familyInvites, guests]);
   const filteredGuests = useMemo(
     () => guests.filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase()) && (hostFilter === "Todos" || (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter))),
