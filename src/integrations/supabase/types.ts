@@ -75,18 +75,24 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invite_physical: boolean
+          invite_physical_at: string | null
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          invite_physical?: boolean
+          invite_physical_at?: string | null
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          invite_physical?: boolean
+          invite_physical_at?: string | null
           name?: string
           updated_at?: string
         }
@@ -102,6 +108,7 @@ export type Database = {
           invite_personal: boolean
           invite_physical: boolean
           invite_virtual: boolean
+          invite_virtual_at: string | null
           is_child: boolean
           is_primary: boolean
           legacy_id: number | null
@@ -119,6 +126,7 @@ export type Database = {
           invite_personal?: boolean
           invite_physical?: boolean
           invite_virtual?: boolean
+          invite_virtual_at?: string | null
           is_child?: boolean
           is_primary?: boolean
           legacy_id?: number | null
@@ -136,6 +144,7 @@ export type Database = {
           invite_personal?: boolean
           invite_physical?: boolean
           invite_virtual?: boolean
+          invite_virtual_at?: string | null
           is_child?: boolean
           is_primary?: boolean
           legacy_id?: number | null
