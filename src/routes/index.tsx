@@ -320,7 +320,12 @@ function FestaApp() {
         </header>
 
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
-          {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
+          {view === "overview" && (
+            <div className="space-y-6">
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <PushPanel isAdmin={session.isAdmin} />
+            </div>
+          )}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
           {view === "suppliers" && <SuppliersView />}
