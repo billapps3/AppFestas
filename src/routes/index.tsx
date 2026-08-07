@@ -657,9 +657,11 @@ type GuestsViewProps = {
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
   onFamilyHost: (family: string, host: string) => void;
+  familyInvites: Record<string, FamilyInvite>;
+  onFamilyPhysical: (family: string, invite: FamilyInvite) => void;
 };
 
-function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost }: GuestsViewProps) {
+function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost, familyInvites, onFamilyPhysical }: GuestsViewProps) {
   const familyOptions = useMemo(
     () =>
       Array.from(new Set([...extraFamilies, ...allGuests.filter((guest) => guest.family).map((guest) => guest.family)])).sort((a, b) =>
