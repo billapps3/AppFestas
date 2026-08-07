@@ -314,6 +314,8 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       </div>
     </section>
 
+    <TaskHealthPanel tasks={tasks} onView={onView} />
+
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Acompanhe de perto" title="Próximos prazos" action="Ver todas" onClick={() => onView("tasks")} /><div className="mt-6 space-y-1">{upcoming.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section>
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
@@ -346,6 +348,70 @@ function formatDue(due: string) {
     return `${day}/${month}/${year}`;
   }
   return due || "sem data";
+}
+
+type TaskHealth = "concluida" | "sem-data" | "atrasada" | "critica" | "no-prazo";
+
+function taskHealth(task: Task): TaskHealth {
+  if (task.status === "Concluído") return "concluida";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(task.due)) return "sem-data";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [year, month, day] = task.due.split("-").map(Number);
+  const target = new Date(year!, month! - 1, day!);
+  const days = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return "atrasada";
+  if (days <= 7 || task.priority === "Alta") return "critica";
+  return "no-prazo";
+}
+
+const healthLabel: Record<TaskHealth, string> = {
+  concluida: "Concluídas",
+  "no-prazo": "No prazo",
+  critica: "Críticas",
+  atrasada: "Atrasadas",
+  "sem-data": "Sem data",
+};
+
+function TaskHealthPanel({ tasks, onView }: { tasks: Task[]; onView: (view: View) => void }) {
+  const counts = tasks.reduce((acc, task) => {
+    const key = taskHealth(task);
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {} as Record<TaskHealth, number>);
+  const late = tasks.filter((task) => taskHealth(task) === "atrasada").slice(0, 4);
+  const cards: { key: TaskHealth; hint: string; className: string }[] = [
+    { key: "no-prazo", hint: "prazo confortável", className: "border-border bg-background" },
+    { key: "critica", hint: "vencem em até 7 dias ou alta prioridade", className: "border-accent/50 bg-accent/10" },
+    { key: "atrasada", hint: "passaram da data limite", className: "border-destructive/40 bg-destructive/5" },
+    { key: "sem-data", hint: "ainda sem data limite", className: "border-border bg-muted/40" },
+    { key: "concluida", hint: "finalizadas", className: "border-primary/30 bg-primary/5" },
+  ];
+  return (
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <SectionHeading eyebrow="Termômetro das tarefas" title="Prazos em dia?" action="Abrir tarefas" onClick={() => onView("tasks")} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {cards.map((card) => (
+          <div key={card.key} className={`rounded-xl border p-4 ${card.className}`}>
+            <div className="text-[11px] leading-tight text-muted-foreground">{healthLabel[card.key]}</div>
+            <div className="mt-2 font-serif text-3xl">{counts[card.key] ?? 0}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{card.hint}</div>
+          </div>
+        ))}
+      </div>
+      {late.length > 0 && (
+        <div className="mt-5 space-y-2 border-t border-border pt-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-destructive">Precisam de atenção agora</div>
+          {late.map((task) => (
+            <div key={task.id} className="flex items-center justify-between gap-3 text-xs">
+              <span className="truncate">{task.name} <span className="text-muted-foreground">· {task.owner || "sem responsável"}</span></span>
+              <span className="shrink-0 text-destructive">{formatDue(task.due)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 const fieldClass = "h-9 w-full rounded-md border border-border bg-background px-2 text-xs";
@@ -427,11 +493,18 @@ function TaskLine({ task, child = false, onStatus, onEdit, onDelete, onAddChild 
 
 function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: Task[]; onTaskStatus: (id: number) => void; onAdd: (task: Omit<Task, "id">) => void; onUpdate: (id: number, patch: Partial<Task>) => void; onDelete: (id: number) => void }) {
   const [filter, setFilter] = useState("Todas");
+  const [ownerFilter, setOwnerFilter] = useState("Todos");
   const [editing, setEditing] = useState<number | null>(null);
   const [creating, setCreating] = useState<{ area: string; parent: number | null } | null>(null);
 
   const areas = useMemo(() => Array.from(new Set(tasks.map((task) => task.area).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR")), [tasks]);
-  const matches = (task: Task) => filter === "Todas" || task.status === filter;
+  const owners = useMemo(
+    () => Array.from(new Set([...taskOwners, ...tasks.map((task) => task.owner).filter(Boolean)])).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [tasks],
+  );
+  const matchesOwner = (task: Task) =>
+    ownerFilter === "Todos" || (ownerFilter === "Sem responsável" ? !task.owner?.trim() : task.owner === ownerFilter);
+  const matches = (task: Task) => (filter === "Todas" || task.status === filter) && matchesOwner(task);
 
   const themes = useMemo(() => {
     return areas
@@ -444,7 +517,7 @@ function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: 
         return { area, groups, total: inArea.length };
       })
       .filter((theme) => theme.groups.length > 0);
-  }, [tasks, areas, filter]);
+  }, [tasks, areas, filter, ownerFilter]);
 
   const visible = tasks.filter(matches).length;
 
@@ -470,7 +543,16 @@ function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: 
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground">Responsável
+            <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-xs">
+              <option>Todos</option>
+              <option>Sem responsável</option>
+              {owners.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
+        </div>
         <span className="text-xs text-muted-foreground">{visible} tarefas exibidas</span>
       </div>
 
