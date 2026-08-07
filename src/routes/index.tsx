@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { PushPanel } from "@/components/push-panel";
+import { AccessPanel } from "@/components/access-panel";
 import { loadFamilyInvites, loadMirellaState, saveFamilyInvite, saveMirellaState, type FamilyInvite } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
@@ -59,7 +60,7 @@ export const Route = createFileRoute("/")({
 
 function useSessionProfile() {
   const navigate = useNavigate();
-  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean }>({ ready: false, name: null, isAdmin: false });
+  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean; canFinance: boolean }>({ ready: false, name: null, isAdmin: false, canFinance: false });
 
   useEffect(() => {
     let active = true;
@@ -68,7 +69,7 @@ function useSessionProfile() {
       if (!active) return;
       if (!data.session) {
         navigate({ to: "/auth", replace: true });
-        setState({ ready: false, name: null, isAdmin: false });
+        setState({ ready: false, name: null, isAdmin: false, canFinance: false });
         return;
       }
       const [{ data: profile }, { data: roles }] = await Promise.all([
@@ -76,10 +77,13 @@ function useSessionProfile() {
         supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
       ]);
       if (!active) return;
+      const list = (roles ?? []).map((row) => row.role as string);
+      const isAdmin = list.includes("admin");
       setState({
         ready: true,
         name: profile?.display_name ?? data.session.user.email ?? "Perfil",
-        isAdmin: (roles ?? []).some((row) => row.role === "admin"),
+        isAdmin,
+        canFinance: isAdmin || !list.includes("aniversariante"),
       });
     };
     void load();
@@ -318,7 +322,7 @@ function FestaApp() {
 
         <div className="mt-10 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/45">Organização</div>
         <nav className="mt-3 space-y-1">
-          {navItems.map(({ id, label, icon: Icon }) => (
+          {navItems.filter((item) => session.canFinance || (item.id !== "suppliers" && item.id !== "finance")).map(({ id, label, icon: Icon }) => (
             <Button key={id} variant="ghost" onClick={() => selectView(id)} className={`w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-[13px] ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" : "text-sidebar-foreground/65 hover:text-sidebar-foreground"}`}>
               <Icon className="size-[17px]" />{label}
               {id === "tasks" && <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{tasks.length - completedTasks}</span>}
@@ -345,14 +349,18 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && (
             <div className="space-y-6">
-              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} canFinance={session.canFinance} />
               <PushPanel isAdmin={session.isAdmin} />
+              <AccessPanel isAdmin={session.isAdmin} />
             </div>
           )}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
-          {view === "suppliers" && <SuppliersView />}
-          {view === "finance" && <FinanceView />}
+          {view === "suppliers" && session.canFinance && <SuppliersView />}
+          {view === "finance" && session.canFinance && <FinanceView />}
+          {(view === "suppliers" || view === "finance") && !session.canFinance && (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Este módulo não está disponível no seu perfil.</div>
+          )}
         </main>
       </div>
     </div>
@@ -361,7 +369,7 @@ function FestaApp() {
 
 type RsvpPending = { family: string; deadline: string; waiting: number };
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView, canFinance }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void; canFinance: boolean }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
   const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
@@ -409,7 +417,7 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={ClipboardCheck} label="Tarefas concluídas" value={`${completedTasks} / ${tasks.length}`} detail={`${tasks.length - completedTasks} em aberto`} tone="rose" onClick={() => onView("tasks")} />
       <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
-      <Metric icon={WalletCards} label="Saldo a pagar" value={money(budget.remaining)} detail={`de ${money(budget.planned)} previstos`} tone="sage" onClick={() => onView("finance")} />
+      {canFinance && <Metric icon={WalletCards} label="Saldo a pagar" value={money(budget.remaining)} detail={`de ${money(budget.planned)} previstos`} tone="sage" onClick={() => onView("finance")} />}
       <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
     </section>
 
@@ -440,8 +448,8 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
     </div>
 
-    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+    <div className={`grid gap-6 ${canFinance ? "xl:grid-cols-[0.8fr_1.2fr]" : ""}`}>
+      {canFinance && <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <SectionHeading eyebrow="Orçamento" title="Visão financeira" action="Ver detalhes" onClick={() => onView("finance")} />
         <div className="mt-7 flex flex-wrap items-end justify-between gap-3">
           <div><div className="text-xs text-muted-foreground">Total previsto</div><div className="mt-1 font-serif text-2xl sm:text-3xl">{money(budget.planned)}</div></div>
@@ -450,12 +458,12 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, paidPercent)}%` }} /></div>
         <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground"><span>{paidPercent}% pago</span><span>Falta {money(budget.remaining)}</span></div>
         {budget.overdue > 0 && <div className="mt-2 text-[11px] font-medium text-destructive">{money(budget.overdue)} em parcelas atrasadas</div>}
-      </section>
+      </section>}
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <SectionHeading eyebrow="Para não esquecer" title="Atenções desta semana" />
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Attention icon={Clock3} title={`${soonTasks} prazos próximos`} text="Nos próximos 7 dias" />
-          <Attention icon={Store} title={`${openSuppliers} fornecedores`} text="Ainda sem contrato" />
+          {canFinance && <Attention icon={Store} title={`${openSuppliers} fornecedores`} text="Ainda sem contrato" />}
           <Attention icon={Send} title={`${pendingInvites} convites`} text="Ainda não enviados" />
         </div>
       </section>
