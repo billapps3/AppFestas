@@ -997,6 +997,19 @@ function ExpenseForm({ title, initial, onSubmit, onCancel }: { title: string; in
 }
 
 function FinanceView() {
+  return <FinanceViewInner />;
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-border bg-background px-2 py-1.5">
+      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="truncate text-xs font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function FinanceViewInner() {
   const { items, loading, create, update, remove } = useExpenses();
   const suppliers = useSuppliers();
   const parcels = useInstallments();
