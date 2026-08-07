@@ -253,6 +253,10 @@ function FestaApp() {
     setMenuOpen(false);
   };
 
+  if (!session.ready) {
+    return <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">Carregando o painel…</div>;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className={`fixed inset-y-0 left-0 z-30 flex w-[252px] flex-col border-r border-border bg-sidebar px-5 py-6 transition-transform duration-200 lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
