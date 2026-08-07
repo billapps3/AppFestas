@@ -998,27 +998,74 @@ function ExpenseForm({ title, initial, onSubmit, onCancel }: { title: string; in
 
 function FinanceView() {
   const { items, loading, create, update, remove } = useExpenses();
+  const suppliers = useSuppliers();
   const parcels = useInstallments();
   const [openParcels, setOpenParcels] = useState<string | null>(null);
+  const [openSupplierParcels, setOpenSupplierParcels] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
-  const planned = items.reduce((sum, row) => sum + row.planned, 0);
-  const paid = items.reduce((sum, row) => sum + row.paid, 0);
+  const expensePlanned = items.reduce((sum, row) => sum + row.planned, 0);
+  const expensePaid = items.reduce((sum, row) => sum + row.paid, 0);
+  const supplierPlanned = suppliers.items.reduce((sum, row) => sum + row.value, 0);
+  const supplierPaid = suppliers.items.reduce((sum, row) => sum + row.paid, 0);
+  const planned = expensePlanned + supplierPlanned;
+  const paid = expensePaid + supplierPaid;
 
   return <div className="space-y-7">
-    <PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Tenha clareza do que foi previsto, pago e ainda falta pagar." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Lançar despesa</Button>} />
+    <PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Contratos dos fornecedores + despesas avulsas somados em um único orçamento." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Lançar despesa avulsa</Button>} />
     <div className="grid gap-4 sm:grid-cols-3">
-      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail="para os itens cadastrados" tone="rose" onClick={() => undefined} />
+      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail={`${money(supplierPlanned)} fornecedores + ${money(expensePlanned)} avulsas`} tone="rose" onClick={() => undefined} />
       <Metric icon={Check} label="Total pago" value={money(paid)} detail={planned ? `${Math.round((paid / planned) * 100)}% do orçamento` : "sem despesas ainda"} tone="sage" onClick={() => undefined} />
-      <Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail="próximos vencimentos" tone="gold" onClick={() => undefined} />
+      <Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail={`${money(supplierPlanned - supplierPaid)} fornecedores + ${money(expensePlanned - expensePaid)} avulsas`} tone="gold" onClick={() => undefined} />
     </div>
+
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="border-b border-border p-5 sm:p-6">
+        <h2 className="font-serif text-2xl">Contratos com fornecedores</h2>
+        <p className="mt-1 text-xs text-muted-foreground">Valores vindos da aba Fornecedores — edite-os por lá; aqui você acompanha e dá baixa nas prestações.</p>
+      </div>
+      {suppliers.loading ? <div className="p-6 text-sm text-muted-foreground">Carregando fornecedores…</div>
+        : suppliers.items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Nenhum fornecedor cadastrado ainda.</div>
+        : <ul className="divide-y divide-border">
+            {suppliers.items.map((row) => (
+              <li key={row.id} className="p-4 sm:px-6">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">{row.name}</span>
+                  {row.category && <span className="text-[11px] text-muted-foreground">{row.category}</span>}
+                  <Badge variant={row.status === "Contratado" ? "secondary" : "outline"} className="text-[10px]">{row.status}</Badge>
+                  <Button size="sm" variant="ghost" className="ml-auto h-7 text-[11px]" onClick={() => setOpenSupplierParcels((current) => current === row.id ? null : row.id)}>
+                    {openSupplierParcels === row.id ? "Fechar" : `Prestações (${parcels.forSupplier(row.id).length})`}
+                  </Button>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MiniStat label="Previsto" value={money(row.value)} />
+                  <MiniStat label="Pago" value={money(row.paid)} />
+                  <MiniStat label="Falta pagar" value={money(row.value - row.paid)} />
+                  <MiniStat label="Vencimento" value={formatDue(row.due)} />
+                </div>
+                {openSupplierParcels === row.id && (
+                  <InstallmentsPanel
+                    parent={{ supplierId: row.id }}
+                    items={parcels.forSupplier(row.id)}
+                    onCreate={(values) => void parcels.create(values)}
+                    onCreateMany={(list) => void parcels.createMany({ supplierId: row.id }, list)}
+                    onSettle={(parcel, paidAt, payer) => void parcels.settle(parcel, paidAt, payer)}
+                    onReopen={(parcel) => void parcels.reopen(parcel)}
+                    onRemove={(parcel) => { if (confirm("Excluir esta parcela?")) void parcels.remove(parcel); }}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>}
+    </section>
+
     {creating && <ExpenseForm title="Nova despesa" initial={{}} onSubmit={(values) => { void create(values); setCreating(false); }} onCancel={() => setCreating(false)} />}
     {editing && items.some((item) => item.id === editing) && <ExpenseForm title="Editar despesa" initial={items.find((item) => item.id === editing)!} onSubmit={(values) => { void update(editing, values); setEditing(null); }} onCancel={() => setEditing(null)} />}
     <section className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="border-b border-border p-5 sm:p-6"><h2 className="font-serif text-2xl">Despesas da festa</h2><p className="mt-1 text-xs text-muted-foreground">Valores em reais brasileiros</p></div>
+      <div className="border-b border-border p-5 sm:p-6"><h2 className="font-serif text-2xl">Despesas avulsas</h2><p className="mt-1 text-xs text-muted-foreground">Gastos sem fornecedor cadastrado (decoração comprada, taxas, extras)</p></div>
       {loading ? <div className="p-6 text-sm text-muted-foreground">Carregando despesas…</div>
-        : items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma despesa lançada ainda. Use “Lançar despesa”.</div>
+        : items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma despesa avulsa lançada. Use “Lançar despesa avulsa”.</div>
         : <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Categoria</th><th className="px-4 py-3 font-semibold">Previsto</th><th className="px-4 py-3 font-semibold">Pago</th><th className="px-4 py-3 font-semibold">Falta pagar</th><th className="px-4 py-3 font-semibold">Vencimento</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-6 py-3 font-semibold">Ações</th></tr></thead>
