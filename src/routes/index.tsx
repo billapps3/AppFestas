@@ -116,6 +116,7 @@ type Guest = {
   status: GuestStatus;
   virtual: boolean;
   virtualAt: string;
+  deadline: string;
   physical: boolean;
   personal: boolean;
   child: boolean;
@@ -150,6 +151,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   status: index < 72 ? "Confirmado" : index < 98 ? "Aguardando" : "Não confirmado",
   virtual: index < 31,
   virtualAt: "",
+  deadline: "",
   physical: index < 14,
   personal: index < 6,
   child: typeof guest.age === "number" ? guest.age <= 10 : false,
@@ -283,7 +285,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, virtualAt: "", physical: false, personal: false, child: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, virtualAt: "", deadline: "", physical: false, personal: false, child: false, family: "", host: "" }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -918,21 +920,37 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
           {!inFamily && (
+            <>
             <button
               onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
               aria-pressed={guest.virtual}
               title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
               className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
             ><Send className="size-3" /></button>
-          )}
-          {!inFamily && guest.virtual && (
-            <input
-              type="date"
-              aria-label={`Data do convite virtual de ${guest.name}`}
-              value={guest.virtualAt}
-              onChange={(event) => onUpdate(guest.id, { virtualAt: event.target.value })}
-              className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] outline-none"
-            />
+            {guest.virtual && (
+              <label className="flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-1.5 py-1 text-[10px] text-primary">
+                Enviado
+                <input
+                  type="date"
+                  aria-label={`Data do convite virtual de ${guest.name}`}
+                  value={guest.virtualAt}
+                  onChange={(event) => onUpdate(guest.id, { virtualAt: event.target.value })}
+                  className="h-6 rounded-md border border-border bg-background px-1 text-[10px] outline-none"
+                />
+              </label>
+            )}
+            <label className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] ${guest.deadline && guest.deadline < todayISO() && guest.status === "Aguardando" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}>
+              <Clock3 className="size-3" />
+              Retorno até
+              <input
+                type="date"
+                aria-label={`Data limite de resposta de ${guest.name}`}
+                value={guest.deadline}
+                onChange={(event) => onUpdate(guest.id, { deadline: event.target.value })}
+                className="h-6 rounded-md border border-border bg-background px-1 text-[10px] text-foreground outline-none"
+              />
+            </label>
+            </>
           )}
           {!guest.family && (
             <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
