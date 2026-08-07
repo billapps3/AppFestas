@@ -1,7 +1,7 @@
 import { buildPushPayload, type PushSubscription } from "@block65/webcrypto-web-push";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export type PushPayload = { title: string; body: string; url?: string };
+export type PushPayload = { title: string; body: string; url?: string | undefined };
 
 export async function deliverPush(payload: PushPayload, meta: { sentBy?: string | null; automatic?: boolean }) {
   const vapid = {
