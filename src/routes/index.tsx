@@ -908,7 +908,7 @@ function SuppliersView() {
   const [editing, setEditing] = useState<string | null>(null);
 
   const contracted = items.filter((item) => item.status === "Contratado").length;
-  const total = items.reduce((sum, item) => sum + item.value, 0);
+  const total = items.reduce((sum, item) => sum + computeTotals(item, parcels.forSupplier(item.id)).planned, 0);
   const pending = items.filter((item) => item.status !== "Contratado").length;
 
   return <div className="space-y-7">
