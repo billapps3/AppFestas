@@ -113,20 +113,20 @@ type Guest = {
 };
 
 const hosts = ["William", "Késya", "Mirella"];
-const taskOwners = ["William", "Késya", "Mirella", "Mamãe", "Papai"];
+const taskOwners = ["William", "Késya", "Mirella"];
 const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
 const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
-  { id: 1, name: "Definir identidade visual", area: "Preparação", owner: "Mamãe", due: "08 ago", status: "Concluído", priority: "Alta" },
-  { id: 2, name: "Lista de convidados", area: "Convidados", owner: "Mamãe", due: "12 ago", status: "Concluído", priority: "Alta" },
+  { id: 1, name: "Definir identidade visual", area: "Preparação", owner: "Késya", due: "08 ago", status: "Concluído", priority: "Alta" },
+  { id: 2, name: "Lista de convidados", area: "Convidados", owner: "Késya", due: "12 ago", status: "Concluído", priority: "Alta" },
   { id: 3, name: "Escolher convite físico", area: "Convites físicos", owner: "Mirella", due: "18 ago", status: "Em andamento", priority: "Alta" },
-  { id: 4, name: "Enviar convites virtuais", area: "Convites virtuais", owner: "Mamãe", due: "25 ago", status: "Aguardando", priority: "Alta" },
+  { id: 4, name: "Enviar convites virtuais", area: "Convites virtuais", owner: "Késya", due: "25 ago", status: "Aguardando", priority: "Alta" },
   { id: 5, name: "Contratar buffet", area: "Fornecedores", owner: "Papai", due: "30 ago", status: "Em andamento", priority: "Alta" },
   { id: 6, name: "Escolher vestido", area: "Produção", owner: "Mirella", due: "05 set", status: "Em andamento", priority: "Média" },
-  { id: 7, name: "Produção dos chinelos", area: "Lembranças", owner: "Mamãe", due: "10 set", status: "Aguardando", priority: "Média" },
+  { id: 7, name: "Produção dos chinelos", area: "Lembranças", owner: "Késya", due: "10 set", status: "Aguardando", priority: "Média" },
   { id: 8, name: "Fechar playlist com DJ", area: "Festa", owner: "Mirella", due: "18 set", status: "Aguardando", priority: "Baixa" },
   { id: 9, name: "Prova do vestido", area: "Produção", owner: "Mirella", due: "20 set", status: "Aguardando", priority: "Média" },
   { id: 10, name: "Confirmar decoração", area: "Fornecedores", owner: "Papai", due: "24 set", status: "Aguardando", priority: "Alta" },
