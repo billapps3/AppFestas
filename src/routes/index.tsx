@@ -775,7 +775,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                     <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                  <PhysicalInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
+                  <FamilyInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     Responsável da família
                     <select
@@ -791,8 +791,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                   </div>
                 </div>
                 <div className="divide-y divide-border">
-                  {principal && <GuestRow guest={principal} isPrincipal families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
-                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
+                  {principal && <GuestRow guest={principal} isPrincipal inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
+                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
                 </div>
               </div>
             ))}
@@ -814,7 +814,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   );
 }
 
-function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
+function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; inFamily?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
   return (
     <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-center gap-3">
@@ -832,13 +832,15 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
-            aria-pressed={guest.virtual}
-            title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
-            className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
-          ><Send className="size-3" /></button>
-          {guest.virtual && (
+          {!inFamily && (
+            <button
+              onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
+              aria-pressed={guest.virtual}
+              title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
+              className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
+            ><Send className="size-3" /></button>
+          )}
+          {!inFamily && guest.virtual && (
             <input
               type="date"
               aria-label={`Data do convite virtual de ${guest.name}`}
