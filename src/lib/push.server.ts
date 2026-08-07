@@ -21,7 +21,7 @@ export async function deliverPush(payload: PushPayload, meta: { sentBy?: string 
     };
     try {
       const request = await buildPushPayload({ data: JSON.stringify(payload), options: { ttl: 3600 } }, subscription, vapid);
-      const response = await fetch(row.endpoint, request);
+      const response = await fetch(row.endpoint, request as unknown as RequestInit);
       if (response.ok) {
         delivered += 1;
       } else if (response.status === 404 || response.status === 410) {
