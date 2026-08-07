@@ -5,6 +5,7 @@ import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
+import { computeTotals, sumTotals } from "@/lib/finance-math";
 import { InstallmentsPanel } from "@/components/installments-panel";
 import {
   ArrowUpRight,
