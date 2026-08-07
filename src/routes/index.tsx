@@ -1024,13 +1024,19 @@ function FinanceViewInner() {
   const supplierPaid = suppliers.items.reduce((sum, row) => sum + row.paid, 0);
   const planned = expensePlanned + supplierPlanned;
   const paid = expensePaid + supplierPaid;
+  const expenseTotals = sumTotals(items.map((row) => computeTotals(row, parcels.forExpense(row.id))));
+  const supplierTotals = sumTotals(suppliers.items.map((row) => computeTotals(row, parcels.forSupplier(row.id))));
+  const totals = sumTotals([expenseTotals, supplierTotals]);
+  const planned = totals.planned;
+  const paid = totals.paid;
+  const remaining = totals.remaining;
 
   return <div className="space-y-7">
     <PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Contratos dos fornecedores + despesas avulsas somados em um único orçamento." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Lançar despesa avulsa</Button>} />
     <div className="grid gap-4 sm:grid-cols-3">
-      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail={`${money(supplierPlanned)} fornecedores + ${money(expensePlanned)} avulsas`} tone="rose" onClick={() => undefined} />
+      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail={`${money(supplierTotals.planned)} fornecedores + ${money(expenseTotals.planned)} avulsas`} tone="rose" onClick={() => undefined} />
       <Metric icon={Check} label="Total pago" value={money(paid)} detail={planned ? `${Math.round((paid / planned) * 100)}% do orçamento` : "sem despesas ainda"} tone="sage" onClick={() => undefined} />
-      <Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail={`${money(supplierPlanned - supplierPaid)} fornecedores + ${money(expensePlanned - expensePaid)} avulsas`} tone="gold" onClick={() => undefined} />
+      <Metric icon={WalletCards} label="Falta pagar" value={money(remaining)} detail={totals.overdue > 0 ? `${money(totals.overdue)} em atraso` : `${money(supplierTotals.remaining)} fornecedores + ${money(expenseTotals.remaining)} avulsas`} tone="gold" onClick={() => undefined} />
     </div>
 
     <section className="overflow-hidden rounded-xl border border-border bg-card">
