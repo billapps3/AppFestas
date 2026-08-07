@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
+import { PushPanel } from "@/components/push-panel";
 import { loadFamilyInvites, loadMirellaState, saveFamilyInvite, saveMirellaState, type FamilyInvite } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/")({
 
 function useSessionProfile() {
   const navigate = useNavigate();
-  const [state, setState] = useState<{ ready: boolean; name: string | null }>({ ready: false, name: null });
+  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean }>({ ready: false, name: null, isAdmin: false });
 
   useEffect(() => {
     let active = true;
@@ -66,12 +67,19 @@ function useSessionProfile() {
       if (!active) return;
       if (!data.session) {
         navigate({ to: "/auth", replace: true });
-        setState({ ready: false, name: null });
+        setState({ ready: false, name: null, isAdmin: false });
         return;
       }
-      const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle();
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
+      ]);
       if (!active) return;
-      setState({ ready: true, name: profile?.display_name ?? data.session.user.email ?? "Perfil" });
+      setState({
+        ready: true,
+        name: profile?.display_name ?? data.session.user.email ?? "Perfil",
+        isAdmin: (roles ?? []).some((row) => row.role === "admin"),
+      });
     };
     void load();
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -313,7 +321,12 @@ function FestaApp() {
         </header>
 
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
-          {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
+          {view === "overview" && (
+            <div className="space-y-6">
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <PushPanel isAdmin={session.isAdmin} />
+            </div>
+          )}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
           {view === "suppliers" && <SuppliersView />}

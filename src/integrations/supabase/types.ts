@@ -296,6 +296,72 @@ export type Database = {
         }
         Relationships: []
       }
+      push_messages: {
+        Row: {
+          automatic: boolean
+          body: string
+          created_at: string
+          delivered: number
+          id: string
+          sent_by: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          automatic?: boolean
+          body: string
+          created_at?: string
+          delivered?: number
+          id?: string
+          sent_by?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          automatic?: boolean
+          body?: string
+          created_at?: string
+          delivered?: number
+          id?: string
+          sent_by?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          label: string | null
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          label?: string | null
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          label?: string | null
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           category: string | null
