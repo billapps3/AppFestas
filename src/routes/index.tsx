@@ -867,6 +867,43 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
   );
 }
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function formatBR(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "sem data";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite?: FamilyInvite; onChange: (family: string, invite: FamilyInvite) => void }) {
+  const sent = invite?.physical ?? false;
+  const at = invite?.physicalAt ?? "";
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${sent ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
+      <label className="flex cursor-pointer items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={sent}
+          aria-label={`Convite físico da família ${family}`}
+          onChange={(event) => onChange(family, event.target.checked ? { physical: true, physicalAt: at || todayISO() } : { physical: false, physicalAt: "" })}
+          className="size-3.5 accent-[hsl(var(--primary))]"
+        />
+        <Gift className="size-3.5" />
+        Convite físico
+      </label>
+      {sent && (
+        <input
+          type="date"
+          aria-label={`Data de entrega do convite físico da família ${family}`}
+          value={at}
+          onChange={(event) => onChange(family, { physical: true, physicalAt: event.target.value })}
+          className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+        />
+      )}
+    </div>
+  );
+}
+
 function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: number, status: GuestStatus) => void }) {
   return (
     <select
