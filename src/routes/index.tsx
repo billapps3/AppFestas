@@ -5,6 +5,7 @@ import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
+import { computeTotals, sumTotals } from "@/lib/finance-math";
 import { InstallmentsPanel } from "@/components/installments-panel";
 import {
   ArrowUpRight,
@@ -907,7 +908,7 @@ function SuppliersView() {
   const [editing, setEditing] = useState<string | null>(null);
 
   const contracted = items.filter((item) => item.status === "Contratado").length;
-  const total = items.reduce((sum, item) => sum + item.value, 0);
+  const total = items.reduce((sum, item) => sum + computeTotals(item, parcels.forSupplier(item.id)).planned, 0);
   const pending = items.filter((item) => item.status !== "Contratado").length;
 
   return <div className="space-y-7">
@@ -934,8 +935,15 @@ function SuppliersView() {
                 <div className="mt-5 font-medium">{item.name}</div>
                 {item.category && <div className="mt-0.5 text-[11px] text-muted-foreground">{item.category}</div>}
                 <Badge variant={item.status === "Contratado" ? "secondary" : item.status === "Em negociação" ? "default" : "outline"} className="mt-2 text-[10px]">{item.status}</Badge>
-                <div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(item.value)}</span></div>
-                <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(item.value - item.paid)}</span></div>
+                {(() => {
+                  const t = computeTotals(item, parcels.forSupplier(item.id));
+                  return <>
+                    <div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(t.planned)}</span></div>
+                    <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Pago</span><span className="font-medium">{money(t.paid)}</span></div>
+                    <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(t.remaining)}</span></div>
+                    {t.unplanned && <div className="mt-1 text-[10px] text-muted-foreground">Sem valor de contrato — previsto calculado pelas parcelas.</div>}
+                  </>;
+                })()}
                 {item.contact && <div className="mt-2 text-[11px] text-muted-foreground">{item.contact}</div>}
                 <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {formatDue(item.due)}</div>
                 <InstallmentsPanel
@@ -1018,19 +1026,19 @@ function FinanceViewInner() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
-  const expensePlanned = items.reduce((sum, row) => sum + row.planned, 0);
-  const expensePaid = items.reduce((sum, row) => sum + row.paid, 0);
-  const supplierPlanned = suppliers.items.reduce((sum, row) => sum + row.value, 0);
-  const supplierPaid = suppliers.items.reduce((sum, row) => sum + row.paid, 0);
-  const planned = expensePlanned + supplierPlanned;
-  const paid = expensePaid + supplierPaid;
+  const expenseTotals = sumTotals(items.map((row) => computeTotals(row, parcels.forExpense(row.id))));
+  const supplierTotals = sumTotals(suppliers.items.map((row) => computeTotals(row, parcels.forSupplier(row.id))));
+  const totals = sumTotals([expenseTotals, supplierTotals]);
+  const planned = totals.planned;
+  const paid = totals.paid;
+  const remaining = totals.remaining;
 
   return <div className="space-y-7">
     <PageIntro eyebrow="Controle do orçamento" title="Financeiro" description="Contratos dos fornecedores + despesas avulsas somados em um único orçamento." action={<Button onClick={() => { setCreating(true); setEditing(null); }}><Plus />Lançar despesa avulsa</Button>} />
     <div className="grid gap-4 sm:grid-cols-3">
-      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail={`${money(supplierPlanned)} fornecedores + ${money(expensePlanned)} avulsas`} tone="rose" onClick={() => undefined} />
+      <Metric icon={CircleDollarSign} label="Total previsto" value={money(planned)} detail={`${money(supplierTotals.planned)} fornecedores + ${money(expenseTotals.planned)} avulsas`} tone="rose" onClick={() => undefined} />
       <Metric icon={Check} label="Total pago" value={money(paid)} detail={planned ? `${Math.round((paid / planned) * 100)}% do orçamento` : "sem despesas ainda"} tone="sage" onClick={() => undefined} />
-      <Metric icon={WalletCards} label="Falta pagar" value={money(planned - paid)} detail={`${money(supplierPlanned - supplierPaid)} fornecedores + ${money(expensePlanned - expensePaid)} avulsas`} tone="gold" onClick={() => undefined} />
+      <Metric icon={WalletCards} label="Falta pagar" value={money(remaining)} detail={totals.overdue > 0 ? `${money(totals.overdue)} em atraso` : `${money(supplierTotals.remaining)} fornecedores + ${money(expenseTotals.remaining)} avulsas`} tone="gold" onClick={() => undefined} />
     </div>
 
     <section className="overflow-hidden rounded-xl border border-border bg-card">
@@ -1051,12 +1059,15 @@ function FinanceViewInner() {
                     {openSupplierParcels === row.id ? "Fechar" : `Prestações (${parcels.forSupplier(row.id).length})`}
                   </Button>
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <MiniStat label="Previsto" value={money(row.value)} />
-                  <MiniStat label="Pago" value={money(row.paid)} />
-                  <MiniStat label="Falta pagar" value={money(row.value - row.paid)} />
-                  <MiniStat label="Vencimento" value={formatDue(row.due)} />
-                </div>
+                {(() => {
+                  const t = computeTotals(row, parcels.forSupplier(row.id));
+                  return <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <MiniStat label="Previsto" value={money(t.planned)} />
+                    <MiniStat label="Pago" value={money(t.paid)} />
+                    <MiniStat label={t.overdue > 0 ? "Falta pagar (c/ atraso)" : "Falta pagar"} value={money(t.remaining)} />
+                    <MiniStat label="Vencimento" value={formatDue(row.due)} />
+                  </div>;
+                })()}
                 {openSupplierParcels === row.id && (
                   <InstallmentsPanel
                     parent={{ supplierId: row.id }}
@@ -1082,11 +1093,11 @@ function FinanceViewInner() {
         : <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Categoria</th><th className="px-4 py-3 font-semibold">Previsto</th><th className="px-4 py-3 font-semibold">Pago</th><th className="px-4 py-3 font-semibold">Falta pagar</th><th className="px-4 py-3 font-semibold">Vencimento</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-6 py-3 font-semibold">Ações</th></tr></thead>
-              <tbody>{items.map((row) => <tr key={row.id} className="border-t border-border">
+              <tbody>{items.map((row) => { const t = computeTotals(row, parcels.forExpense(row.id)); return <tr key={row.id} className="border-t border-border">
                 <td className="px-6 py-4 font-medium">{row.name}{row.description && <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">{row.description}</div>}</td>
-                <td className="px-4 py-4 text-muted-foreground">{money(row.planned)}</td>
-                <td className="px-4 py-4">{money(row.paid)}</td>
-                <td className="px-4 py-4 font-semibold text-primary">{money(row.planned - row.paid)}</td>
+                <td className="px-4 py-4 text-muted-foreground">{money(t.planned)}</td>
+                <td className="px-4 py-4">{money(t.paid)}</td>
+                <td className="px-4 py-4 font-semibold text-primary">{money(t.remaining)}</td>
                 <td className="px-4 py-4 text-xs text-muted-foreground">{formatDue(row.due)}</td>
                 <td className="px-4 py-4"><Badge variant={row.status === "Parcial" ? "secondary" : row.status === "Pago" ? "default" : "outline"} className="text-[10px]">{row.status}</Badge></td>
                 <td className="px-6 py-4"><div className="flex gap-1">
@@ -1094,7 +1105,7 @@ function FinanceViewInner() {
                   <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" aria-label="Excluir despesa" onClick={() => { if (confirm(`Excluir ${row.name}?`)) void remove(row.id); }}><Trash2 className="size-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setOpenParcels((current) => current === row.id ? null : row.id)}>{openParcels === row.id ? "Fechar" : `Prestações (${parcels.forExpense(row.id).length})`}</Button>
                 </div></td>
-              </tr>).flatMap((node, index) => {
+              </tr>; }).flatMap((node, index) => {
                 const row = items[index]!;
                 return openParcels === row.id
                   ? [node, <tr key={`${row.id}-parcels`} className="border-t border-border bg-muted/20"><td colSpan={7} className="px-6 pb-4 pt-0">
