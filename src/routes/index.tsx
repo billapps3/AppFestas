@@ -1018,12 +1018,6 @@ function FinanceViewInner() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
-  const expensePlanned = items.reduce((sum, row) => sum + row.planned, 0);
-  const expensePaid = items.reduce((sum, row) => sum + row.paid, 0);
-  const supplierPlanned = suppliers.items.reduce((sum, row) => sum + row.value, 0);
-  const supplierPaid = suppliers.items.reduce((sum, row) => sum + row.paid, 0);
-  const planned = expensePlanned + supplierPlanned;
-  const paid = expensePaid + supplierPaid;
   const expenseTotals = sumTotals(items.map((row) => computeTotals(row, parcels.forExpense(row.id))));
   const supplierTotals = sumTotals(suppliers.items.map((row) => computeTotals(row, parcels.forSupplier(row.id))));
   const totals = sumTotals([expenseTotals, supplierTotals]);
