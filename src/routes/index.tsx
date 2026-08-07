@@ -154,6 +154,7 @@ function money(value: number) {
 }
 
 function FestaApp() {
+  const session = useSessionProfile();
   const [view, setView] = useState<View>("overview");
   const [tasks, setTasks] = useState(taskSeed);
   const [guests, setGuests] = useState(guestNames);
