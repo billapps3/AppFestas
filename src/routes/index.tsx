@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
@@ -50,6 +51,35 @@ export const Route = createFileRoute("/")({
   }),
   component: FestaApp,
 });
+
+function useSessionProfile() {
+  const navigate = useNavigate();
+  const [state, setState] = useState<{ ready: boolean; name: string | null }>({ ready: false, name: null });
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!data.session) {
+        navigate({ to: "/auth", replace: true });
+        setState({ ready: false, name: null });
+        return;
+      }
+      const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle();
+      if (!active) return;
+      setState({ ready: true, name: profile?.display_name ?? data.session.user.email ?? "Perfil" });
+    };
+    void load();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") navigate({ to: "/auth", replace: true });
+      if (event === "SIGNED_IN") void load();
+    });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, [navigate]);
+
+  return state;
+}
 
 type View = "overview" | "tasks" | "guests" | "suppliers" | "finance";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
@@ -124,6 +154,7 @@ function money(value: number) {
 }
 
 function FestaApp() {
+  const session = useSessionProfile();
   const [view, setView] = useState<View>("overview");
   const [tasks, setTasks] = useState(taskSeed);
   const [guests, setGuests] = useState(guestNames);
@@ -222,6 +253,10 @@ function FestaApp() {
     setMenuOpen(false);
   };
 
+  if (!session.ready) {
+    return <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">Carregando o painel…</div>;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className={`fixed inset-y-0 left-0 z-30 flex w-[252px] flex-col border-r border-border bg-sidebar px-5 py-6 transition-transform duration-200 lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
@@ -258,7 +293,7 @@ function FestaApp() {
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
           <div className="flex h-[72px] items-center justify-between px-5 sm:px-8 lg:px-10">
             <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div><div className="text-[11px] font-medium text-muted-foreground">Sexta-feira, 06 de agosto de 2026</div><div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? "Bom dia, mamãe" : navItems.find((item) => item.id === view)?.label}</div></div></div>
-            <div className="flex items-center gap-2 sm:gap-4"><span className="hidden text-xs text-muted-foreground sm:inline">{saveState === "saving" ? "Salvando…" : saveState === "saved" ? "Salvo na nuvem" : saveState === "error" ? "Erro ao salvar" : ""}</span><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">M</span></div>
+            <div className="flex items-center gap-2 sm:gap-4"><span className="hidden text-xs text-muted-foreground sm:inline">{saveState === "saving" ? "Salvando…" : saveState === "saved" ? "Salvo na nuvem" : saveState === "error" ? "Erro ao salvar" : ""}</span><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="hidden text-xs font-medium sm:inline">{session.name}</span><Button variant="ghost" size="sm" className="text-xs" onClick={() => { void supabase.auth.signOut(); }}>Sair</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span></div>
           </div>
         </header>
 
