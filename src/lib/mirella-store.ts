@@ -24,6 +24,7 @@ export type StoredGuest = {
   child: boolean;
   family: string;
   host: string;
+  deadline: string;
 };
 
 export type MirellaState = { tasks: StoredTask[]; guests: StoredGuest[] };
@@ -59,6 +60,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     physical: row.invite_physical,
     personal: row.invite_personal,
     child: row.is_child ?? false,
+    deadline: row.rsvp_deadline ?? "",
     family: (row.family_id && families.byId.get(row.family_id)) || "",
     host: (row.host_id && hosts.byId.get(row.host_id)) || "",
   }));
@@ -103,6 +105,7 @@ export async function saveMirellaState(state: MirellaState) {
     status: guest.status,
     invite_virtual: guest.virtual,
     invite_virtual_at: guest.virtualAt || null,
+    rsvp_deadline: guest.deadline || null,
     invite_physical: guest.physical,
     invite_personal: guest.personal,
     is_primary: Boolean(guest.family) && guest.family === guest.name,
