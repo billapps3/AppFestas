@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
-import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
+import { loadFamilyInvites, loadMirellaState, saveFamilyInvite, saveMirellaState, type FamilyInvite } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
 import { computeTotals, sumTotals } from "@/lib/finance-math";
@@ -171,6 +171,16 @@ function FestaApp() {
   const [daysLeft, setDaysLeft] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
+
+  useEffect(() => {
+    void loadFamilyInvites().then(setFamilyInvites);
+  }, []);
+
+  const setFamilyPhysical = (family: string, invite: FamilyInvite) => {
+    setFamilyInvites((current) => ({ ...current, [family]: invite }));
+    void saveFamilyInvite(family, invite);
+  };
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -305,7 +315,7 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
-          {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
+          {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
           {view === "suppliers" && <SuppliersView />}
           {view === "finance" && <FinanceView />}
         </main>
