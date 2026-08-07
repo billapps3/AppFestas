@@ -90,6 +90,27 @@ export function useInstallments() {
     await refresh();
   }, [items, refresh]);
 
+  const createMany = useCallback(async (parent: { supplierId?: string | null; expenseId?: string | null }, list: Array<{ label: string; amount: number; due: string }>) => {
+    if (list.length === 0) return;
+    const siblings = parent.supplierId
+      ? items.filter((item) => item.supplierId === parent.supplierId)
+      : items.filter((item) => item.expenseId === parent.expenseId);
+    let seq = siblings.reduce((max, item) => Math.max(max, item.seq), 0);
+    const rows = list.map((entry) => {
+      seq += 1;
+      return {
+        supplier_id: parent.supplierId ?? null,
+        expense_id: parent.expenseId ?? null,
+        seq,
+        label: entry.label || `Parcela ${seq}`,
+        amount: entry.amount,
+        due: entry.due || null,
+      };
+    });
+    await supabase.from("installments").insert(rows);
+    await refresh();
+  }, [items, refresh]);
+
   const settle = useCallback(async (item: Installment, paidAt: string, payer: string) => {
     await supabase.from("installments").update({ paid: true, paid_at: paidAt || null, payer: payer || null }).eq("id", item.id);
     await syncParentPaid(item);
@@ -108,7 +129,7 @@ export function useInstallments() {
     await refresh();
   }, [refresh, syncParentPaid]);
 
-  return { items, loading, forSupplier, forExpense, create, settle, reopen, remove, refresh };
+  return { items, loading, forSupplier, forExpense, create, createMany, settle, reopen, remove, refresh };
 }
 
 export function usePayers() {
