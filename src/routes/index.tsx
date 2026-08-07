@@ -1093,11 +1093,11 @@ function FinanceViewInner() {
         : <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-muted/45 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-6 py-3 font-semibold">Categoria</th><th className="px-4 py-3 font-semibold">Previsto</th><th className="px-4 py-3 font-semibold">Pago</th><th className="px-4 py-3 font-semibold">Falta pagar</th><th className="px-4 py-3 font-semibold">Vencimento</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-6 py-3 font-semibold">Ações</th></tr></thead>
-              <tbody>{items.map((row) => <tr key={row.id} className="border-t border-border">
+              <tbody>{items.map((row) => { const t = computeTotals(row, parcels.forExpense(row.id)); return <tr key={row.id} className="border-t border-border">
                 <td className="px-6 py-4 font-medium">{row.name}{row.description && <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">{row.description}</div>}</td>
-                <td className="px-4 py-4 text-muted-foreground">{money(row.planned)}</td>
-                <td className="px-4 py-4">{money(row.paid)}</td>
-                <td className="px-4 py-4 font-semibold text-primary">{money(row.planned - row.paid)}</td>
+                <td className="px-4 py-4 text-muted-foreground">{money(t.planned)}</td>
+                <td className="px-4 py-4">{money(t.paid)}</td>
+                <td className="px-4 py-4 font-semibold text-primary">{money(t.remaining)}</td>
                 <td className="px-4 py-4 text-xs text-muted-foreground">{formatDue(row.due)}</td>
                 <td className="px-4 py-4"><Badge variant={row.status === "Parcial" ? "secondary" : row.status === "Pago" ? "default" : "outline"} className="text-[10px]">{row.status}</Badge></td>
                 <td className="px-6 py-4"><div className="flex gap-1">
@@ -1105,7 +1105,7 @@ function FinanceViewInner() {
                   <Button size="icon" variant="ghost" className="size-7 text-muted-foreground hover:text-destructive" aria-label="Excluir despesa" onClick={() => { if (confirm(`Excluir ${row.name}?`)) void remove(row.id); }}><Trash2 className="size-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setOpenParcels((current) => current === row.id ? null : row.id)}>{openParcels === row.id ? "Fechar" : `Prestações (${parcels.forExpense(row.id).length})`}</Button>
                 </div></td>
-              </tr>).flatMap((node, index) => {
+              </tr>; }).flatMap((node, index) => {
                 const row = items[index]!;
                 return openParcels === row.id
                   ? [node, <tr key={`${row.id}-parcels`} className="border-t border-border bg-muted/20"><td colSpan={7} className="px-6 pb-4 pt-0">
