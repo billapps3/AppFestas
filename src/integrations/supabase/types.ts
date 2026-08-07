@@ -123,6 +123,7 @@ export type Database = {
           legacy_id: number | null
           name: string
           phone: string | null
+          rsvp_deadline: string | null
           status: string
           updated_at: string
         }
@@ -141,6 +142,7 @@ export type Database = {
           legacy_id?: number | null
           name: string
           phone?: string | null
+          rsvp_deadline?: string | null
           status?: string
           updated_at?: string
         }
@@ -159,6 +161,7 @@ export type Database = {
           legacy_id?: number | null
           name?: string
           phone?: string | null
+          rsvp_deadline?: string | null
           status?: string
           updated_at?: string
         }
