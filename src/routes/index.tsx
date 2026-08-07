@@ -367,7 +367,7 @@ function FestaApp() {
 
 type RsvpPending = { family: string; deadline: string; waiting: number };
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView, canFinance }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void; canFinance: boolean }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
   const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
@@ -415,7 +415,7 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={ClipboardCheck} label="Tarefas concluídas" value={`${completedTasks} / ${tasks.length}`} detail={`${tasks.length - completedTasks} em aberto`} tone="rose" onClick={() => onView("tasks")} />
       <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
-      <Metric icon={WalletCards} label="Saldo a pagar" value={money(budget.remaining)} detail={`de ${money(budget.planned)} previstos`} tone="sage" onClick={() => onView("finance")} />
+      {canFinance && <Metric icon={WalletCards} label="Saldo a pagar" value={money(budget.remaining)} detail={`de ${money(budget.planned)} previstos`} tone="sage" onClick={() => onView("finance")} />}
       <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
     </section>
 
@@ -446,8 +446,8 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
     </div>
 
-    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+    <div className={`grid gap-6 ${canFinance ? "xl:grid-cols-[0.8fr_1.2fr]" : ""}`}>
+      {canFinance && <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <SectionHeading eyebrow="Orçamento" title="Visão financeira" action="Ver detalhes" onClick={() => onView("finance")} />
         <div className="mt-7 flex flex-wrap items-end justify-between gap-3">
           <div><div className="text-xs text-muted-foreground">Total previsto</div><div className="mt-1 font-serif text-2xl sm:text-3xl">{money(budget.planned)}</div></div>
@@ -456,12 +456,12 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, paidPercent)}%` }} /></div>
         <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground"><span>{paidPercent}% pago</span><span>Falta {money(budget.remaining)}</span></div>
         {budget.overdue > 0 && <div className="mt-2 text-[11px] font-medium text-destructive">{money(budget.overdue)} em parcelas atrasadas</div>}
-      </section>
+      </section>}
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <SectionHeading eyebrow="Para não esquecer" title="Atenções desta semana" />
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Attention icon={Clock3} title={`${soonTasks} prazos próximos`} text="Nos próximos 7 dias" />
-          <Attention icon={Store} title={`${openSuppliers} fornecedores`} text="Ainda sem contrato" />
+          {canFinance && <Attention icon={Store} title={`${openSuppliers} fornecedores`} text="Ainda sem contrato" />}
           <Attention icon={Send} title={`${pendingInvites} convites`} text="Ainda não enviados" />
         </div>
       </section>
