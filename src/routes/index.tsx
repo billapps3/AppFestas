@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
 
 function useSessionProfile() {
   const navigate = useNavigate();
-  const [state, setState] = useState<{ ready: boolean; name: string | null }>({ ready: false, name: null });
+  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean }>({ ready: false, name: null, isAdmin: false });
 
   useEffect(() => {
     let active = true;
@@ -66,12 +66,19 @@ function useSessionProfile() {
       if (!active) return;
       if (!data.session) {
         navigate({ to: "/auth", replace: true });
-        setState({ ready: false, name: null });
+        setState({ ready: false, name: null, isAdmin: false });
         return;
       }
-      const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle();
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
+      ]);
       if (!active) return;
-      setState({ ready: true, name: profile?.display_name ?? data.session.user.email ?? "Perfil" });
+      setState({
+        ready: true,
+        name: profile?.display_name ?? data.session.user.email ?? "Perfil",
+        isAdmin: (roles ?? []).some((row) => row.role === "admin"),
+      });
     };
     void load();
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
