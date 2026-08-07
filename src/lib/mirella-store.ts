@@ -134,3 +134,21 @@ export async function saveMirellaState(state: MirellaState) {
       .not("legacy_id", "in", `(${tasks.map((task) => task.id).join(",")})`);
   }
 }
+
+export type FamilyInvite = { physical: boolean; physicalAt: string };
+
+export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
+  const { data } = await supabase.from("families").select("name, invite_physical, invite_physical_at");
+  const map: Record<string, FamilyInvite> = {};
+  for (const row of data ?? []) {
+    map[row.name] = { physical: row.invite_physical ?? false, physicalAt: row.invite_physical_at ?? "" };
+  }
+  return map;
+}
+
+export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
+  if (!name) return;
+  await supabase
+    .from("families")
+    .upsert({ name, invite_physical: invite.physical, invite_physical_at: invite.physicalAt || null }, { onConflict: "name" });
+}
