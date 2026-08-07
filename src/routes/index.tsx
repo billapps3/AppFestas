@@ -128,6 +128,8 @@ const taskOwners = ["William", "Késya", "Mirella"];
 const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
 const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
+const groupFamilies = new Set(extraFamilies);
+const isGroupFamily = (family: string) => groupFamilies.has(family);
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
@@ -230,12 +232,13 @@ function FestaApp() {
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
-  const virtualSent = guests.filter((guest) => (guest.family ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
+  const virtualSent = guests.filter((guest) => (guest.family && !isGroupFamily(guest.family) ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
 
   const rsvpPending = useMemo(() => {
     const today = todayISO();
     return Object.entries(familyInvites)
       .filter(([, invite]) => invite.deadline && invite.deadline < today)
+      .filter(([family]) => !isGroupFamily(family))
       .map(([family, invite]) => ({
         family,
         deadline: invite.deadline,
