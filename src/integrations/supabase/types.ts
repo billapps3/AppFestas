@@ -286,24 +286,30 @@ export type Database = {
       }
       profiles: {
         Row: {
+          can_finance: boolean
           created_at: string
           display_name: string
           email: string | null
           id: string
+          party_role: string
           updated_at: string
         }
         Insert: {
+          can_finance?: boolean
           created_at?: string
           display_name?: string
           email?: string | null
           id: string
+          party_role?: string
           updated_at?: string
         }
         Update: {
+          can_finance?: boolean
           created_at?: string
           display_name?: string
           email?: string | null
           id?: string
+          party_role?: string
           updated_at?: string
         }
         Relationships: []
