@@ -1059,12 +1059,15 @@ function FinanceViewInner() {
                     {openSupplierParcels === row.id ? "Fechar" : `Prestações (${parcels.forSupplier(row.id).length})`}
                   </Button>
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <MiniStat label="Previsto" value={money(row.value)} />
-                  <MiniStat label="Pago" value={money(row.paid)} />
-                  <MiniStat label="Falta pagar" value={money(row.value - row.paid)} />
-                  <MiniStat label="Vencimento" value={formatDue(row.due)} />
-                </div>
+                {(() => {
+                  const t = computeTotals(row, parcels.forSupplier(row.id));
+                  return <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <MiniStat label="Previsto" value={money(t.planned)} />
+                    <MiniStat label="Pago" value={money(t.paid)} />
+                    <MiniStat label={t.overdue > 0 ? "Falta pagar (c/ atraso)" : "Falta pagar"} value={money(t.remaining)} />
+                    <MiniStat label="Vencimento" value={formatDue(row.due)} />
+                  </div>;
+                })()}
                 {openSupplierParcels === row.id && (
                   <InstallmentsPanel
                     parent={{ supplierId: row.id }}
