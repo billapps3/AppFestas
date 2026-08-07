@@ -493,11 +493,18 @@ function TaskLine({ task, child = false, onStatus, onEdit, onDelete, onAddChild 
 
 function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: Task[]; onTaskStatus: (id: number) => void; onAdd: (task: Omit<Task, "id">) => void; onUpdate: (id: number, patch: Partial<Task>) => void; onDelete: (id: number) => void }) {
   const [filter, setFilter] = useState("Todas");
+  const [ownerFilter, setOwnerFilter] = useState("Todos");
   const [editing, setEditing] = useState<number | null>(null);
   const [creating, setCreating] = useState<{ area: string; parent: number | null } | null>(null);
 
   const areas = useMemo(() => Array.from(new Set(tasks.map((task) => task.area).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR")), [tasks]);
-  const matches = (task: Task) => filter === "Todas" || task.status === filter;
+  const owners = useMemo(
+    () => Array.from(new Set([...taskOwners, ...tasks.map((task) => task.owner).filter(Boolean)])).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [tasks],
+  );
+  const matchesOwner = (task: Task) =>
+    ownerFilter === "Todos" || (ownerFilter === "Sem responsável" ? !task.owner?.trim() : task.owner === ownerFilter);
+  const matches = (task: Task) => (filter === "Todas" || task.status === filter) && matchesOwner(task);
 
   const themes = useMemo(() => {
     return areas
@@ -510,7 +517,7 @@ function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: 
         return { area, groups, total: inArea.length };
       })
       .filter((theme) => theme.groups.length > 0);
-  }, [tasks, areas, filter]);
+  }, [tasks, areas, filter, ownerFilter]);
 
   const visible = tasks.filter(matches).length;
 
@@ -536,7 +543,16 @@ function TasksView({ tasks, onTaskStatus, onAdd, onUpdate, onDelete }: { tasks: 
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 rounded-lg bg-muted p-1">{["Todas", "Em andamento", "Aguardando", "Concluído"].map((item) => <Button key={item} size="sm" variant={filter === item ? "default" : "ghost"} onClick={() => setFilter(item)} className="text-xs">{item}</Button>)}</div>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground">Responsável
+            <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-xs">
+              <option>Todos</option>
+              <option>Sem responsável</option>
+              {owners.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
+        </div>
         <span className="text-xs text-muted-foreground">{visible} tarefas exibidas</span>
       </div>
 
