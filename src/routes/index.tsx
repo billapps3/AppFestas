@@ -888,31 +888,70 @@ function formatBR(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
-  const sent = invite?.physical ?? false;
-  const at = invite?.physicalAt ?? "";
+const emptyInvite: FamilyInvite = { physical: false, physicalAt: "", virtual: false, virtualAt: "", deadline: "" };
+
+function FamilyInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
+  const current = { ...emptyInvite, ...(invite ?? {}) };
+  const patch = (values: Partial<FamilyInvite>) => onChange(family, { ...current, ...values });
   return (
-    <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${sent ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
-      <label className="flex cursor-pointer items-center gap-1.5">
-        <input
-          type="checkbox"
-          checked={sent}
-          aria-label={`Convite físico da família ${family}`}
-          onChange={(event) => onChange(family, event.target.checked ? { physical: true, physicalAt: at || todayISO() } : { physical: false, physicalAt: "" })}
-          className="size-3.5 accent-[hsl(var(--primary))]"
-        />
-        <Gift className="size-3.5" />
-        Convite físico
-      </label>
-      {sent && (
+    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.virtual ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed border-border text-muted-foreground"}`}>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={current.virtual}
+            aria-label={`Convite virtual da família ${family}`}
+            onChange={(event) => patch(event.target.checked ? { virtual: true, virtualAt: current.virtualAt || todayISO() } : { virtual: false, virtualAt: "" })}
+            className="size-3.5 accent-[hsl(var(--primary))]"
+          />
+          <Send className="size-3.5" />
+          Convite virtual
+        </label>
+        {current.virtual && (
+          <input
+            type="date"
+            aria-label={`Data de envio do convite virtual da família ${family}`}
+            value={current.virtualAt}
+            onChange={(event) => patch({ virtualAt: event.target.value })}
+            className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+          />
+        )}
+      </div>
+
+      <label className="flex flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-muted-foreground">
+        <Clock3 className="size-3.5" />
+        Retorno até
         <input
           type="date"
-          aria-label={`Data de entrega do convite físico da família ${family}`}
-          value={at}
-          onChange={(event) => onChange(family, { physical: true, physicalAt: event.target.value })}
+          aria-label={`Data limite de confirmação da família ${family}`}
+          value={current.deadline}
+          onChange={(event) => patch({ deadline: event.target.value })}
           className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
         />
-      )}
+      </label>
+
+      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.physical ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={current.physical}
+            aria-label={`Convite físico da família ${family}`}
+            onChange={(event) => patch(event.target.checked ? { physical: true, physicalAt: current.physicalAt || todayISO() } : { physical: false, physicalAt: "" })}
+            className="size-3.5 accent-[hsl(var(--primary))]"
+          />
+          <Gift className="size-3.5" />
+          Convite físico
+        </label>
+        {current.physical && (
+          <input
+            type="date"
+            aria-label={`Data de entrega do convite físico da família ${family}`}
+            value={current.physicalAt}
+            onChange={(event) => patch({ physicalAt: event.target.value })}
+            className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+          />
+        )}
+      </div>
     </div>
   );
 }
