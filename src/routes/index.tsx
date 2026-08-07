@@ -350,6 +350,7 @@ function FestaApp() {
             <div className="space-y-6">
               <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} canFinance={session.canFinance} />
               <PushPanel isAdmin={session.isAdmin} />
+              <AccessPanel isAdmin={session.isAdmin} />
             </div>
           )}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
