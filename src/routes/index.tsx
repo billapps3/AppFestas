@@ -348,6 +348,70 @@ function formatDue(due: string) {
   return due || "sem data";
 }
 
+type TaskHealth = "concluida" | "sem-data" | "atrasada" | "critica" | "no-prazo";
+
+function taskHealth(task: Task): TaskHealth {
+  if (task.status === "Concluído") return "concluida";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(task.due)) return "sem-data";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [year, month, day] = task.due.split("-").map(Number);
+  const target = new Date(year!, month! - 1, day!);
+  const days = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return "atrasada";
+  if (days <= 7 || task.priority === "Alta") return "critica";
+  return "no-prazo";
+}
+
+const healthLabel: Record<TaskHealth, string> = {
+  concluida: "Concluídas",
+  "no-prazo": "No prazo",
+  critica: "Críticas",
+  atrasada: "Atrasadas",
+  "sem-data": "Sem data",
+};
+
+function TaskHealthPanel({ tasks, onView }: { tasks: Task[]; onView: (view: View) => void }) {
+  const counts = tasks.reduce((acc, task) => {
+    const key = taskHealth(task);
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {} as Record<TaskHealth, number>);
+  const late = tasks.filter((task) => taskHealth(task) === "atrasada").slice(0, 4);
+  const cards: { key: TaskHealth; hint: string; className: string }[] = [
+    { key: "no-prazo", hint: "prazo confortável", className: "border-border bg-background" },
+    { key: "critica", hint: "vencem em até 7 dias ou alta prioridade", className: "border-accent/50 bg-accent/10" },
+    { key: "atrasada", hint: "passaram da data limite", className: "border-destructive/40 bg-destructive/5" },
+    { key: "sem-data", hint: "ainda sem data limite", className: "border-border bg-muted/40" },
+    { key: "concluida", hint: "finalizadas", className: "border-primary/30 bg-primary/5" },
+  ];
+  return (
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <SectionHeading eyebrow="Termômetro das tarefas" title="Prazos em dia?" action="Abrir tarefas" onClick={() => onView("tasks")} />
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {cards.map((card) => (
+          <div key={card.key} className={`rounded-xl border p-4 ${card.className}`}>
+            <div className="text-[11px] leading-tight text-muted-foreground">{healthLabel[card.key]}</div>
+            <div className="mt-2 font-serif text-3xl">{counts[card.key] ?? 0}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">{card.hint}</div>
+          </div>
+        ))}
+      </div>
+      {late.length > 0 && (
+        <div className="mt-5 space-y-2 border-t border-border pt-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-destructive">Precisam de atenção agora</div>
+          {late.map((task) => (
+            <div key={task.id} className="flex items-center justify-between gap-3 text-xs">
+              <span className="truncate">{task.name} <span className="text-muted-foreground">· {task.owner || "sem responsável"}</span></span>
+              <span className="shrink-0 text-destructive">{formatDue(task.due)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 const fieldClass = "h-9 w-full rounded-md border border-border bg-background px-2 text-xs";
 
 function TaskForm({ title, initial, areas, parents, onSubmit, onCancel }: { title: string; initial: Partial<Task>; areas: string[]; parents: Task[]; onSubmit: (values: Omit<Task, "id">) => void; onCancel: () => void }) {
