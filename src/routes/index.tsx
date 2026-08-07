@@ -935,8 +935,15 @@ function SuppliersView() {
                 <div className="mt-5 font-medium">{item.name}</div>
                 {item.category && <div className="mt-0.5 text-[11px] text-muted-foreground">{item.category}</div>}
                 <Badge variant={item.status === "Contratado" ? "secondary" : item.status === "Em negociação" ? "default" : "outline"} className="mt-2 text-[10px]">{item.status}</Badge>
-                <div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(item.value)}</span></div>
-                <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(item.value - item.paid)}</span></div>
+                {(() => {
+                  const t = computeTotals(item, parcels.forSupplier(item.id));
+                  return <>
+                    <div className="mt-5 flex justify-between text-xs"><span className="text-muted-foreground">Valor</span><span className="font-semibold">{money(t.planned)}</span></div>
+                    <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Pago</span><span className="font-medium">{money(t.paid)}</span></div>
+                    <div className="mt-2 flex justify-between text-xs"><span className="text-muted-foreground">Falta pagar</span><span className="font-medium text-primary">{money(t.remaining)}</span></div>
+                    {t.unplanned && <div className="mt-1 text-[10px] text-muted-foreground">Sem valor de contrato — previsto calculado pelas parcelas.</div>}
+                  </>;
+                })()}
                 {item.contact && <div className="mt-2 text-[11px] text-muted-foreground">{item.contact}</div>}
                 <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[11px] text-muted-foreground"><CalendarDays className="size-3.5" />Vencimento {formatDue(item.due)}</div>
                 <InstallmentsPanel
