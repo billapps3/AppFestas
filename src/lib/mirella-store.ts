@@ -135,13 +135,21 @@ export async function saveMirellaState(state: MirellaState) {
   }
 }
 
-export type FamilyInvite = { physical: boolean; physicalAt: string };
+export type FamilyInvite = { physical: boolean; physicalAt: string; virtual: boolean; virtualAt: string; deadline: string };
 
 export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
-  const { data } = await supabase.from("families").select("name, invite_physical, invite_physical_at");
+  const { data } = await supabase
+    .from("families")
+    .select("name, invite_physical, invite_physical_at, invite_virtual, invite_virtual_at, rsvp_deadline");
   const map: Record<string, FamilyInvite> = {};
   for (const row of data ?? []) {
-    map[row.name] = { physical: row.invite_physical ?? false, physicalAt: row.invite_physical_at ?? "" };
+    map[row.name] = {
+      physical: row.invite_physical ?? false,
+      physicalAt: row.invite_physical_at ?? "",
+      virtual: row.invite_virtual ?? false,
+      virtualAt: row.invite_virtual_at ?? "",
+      deadline: row.rsvp_deadline ?? "",
+    };
   }
   return map;
 }
@@ -150,5 +158,15 @@ export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
   if (!name) return;
   await supabase
     .from("families")
-    .upsert({ name, invite_physical: invite.physical, invite_physical_at: invite.physicalAt || null }, { onConflict: "name" });
+    .upsert(
+      {
+        name,
+        invite_physical: invite.physical,
+        invite_physical_at: invite.physicalAt || null,
+        invite_virtual: invite.virtual,
+        invite_virtual_at: invite.virtualAt || null,
+        rsvp_deadline: invite.deadline || null,
+      },
+      { onConflict: "name" },
+    );
 }

@@ -10,6 +10,7 @@ import { computeTotals, sumTotals } from "@/lib/finance-math";
 import { InstallmentsPanel } from "@/components/installments-panel";
 import {
   ArrowUpRight,
+  AlertTriangle,
   Baby,
   Bell,
   CalendarDays,
@@ -229,7 +230,20 @@ function FestaApp() {
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
-  const virtualSent = guests.filter((guest) => guest.virtual).length;
+  const virtualSent = guests.filter((guest) => (guest.family ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
+
+  const rsvpPending = useMemo(() => {
+    const today = todayISO();
+    return Object.entries(familyInvites)
+      .filter(([, invite]) => invite.deadline && invite.deadline < today)
+      .map(([family, invite]) => ({
+        family,
+        deadline: invite.deadline,
+        waiting: guests.filter((guest) => guest.family === family && guest.status === "Aguardando").length,
+      }))
+      .filter((item) => item.waiting > 0)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  }, [familyInvites, guests]);
   const filteredGuests = useMemo(
     () => guests.filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase()) && (hostFilter === "Todos" || (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter))),
     [guests, search, hostFilter],
@@ -323,7 +337,7 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && (
             <div className="space-y-6">
-              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} />
               <PushPanel isAdmin={session.isAdmin} />
             </div>
           )}
@@ -337,14 +351,48 @@ function FestaApp() {
   );
 }
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+type RsvpPending = { family: string; deadline: string; waiting: number };
+
+function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
   const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
   const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
   const children = guests.filter((guest) => guest.child).length;
   const inviteBalance = totalGuests - children - declined;
+
+  const expenses = useExpenses();
+  const suppliers = useSuppliers();
+  const parcels = useInstallments();
+  const budget = sumTotals([
+    sumTotals(expenses.items.map((row) => computeTotals(row, parcels.forExpense(row.id)))),
+    sumTotals(suppliers.items.map((row) => computeTotals(row, parcels.forSupplier(row.id)))),
+  ]);
+  const paidPercent = budget.planned > 0 ? Math.round((budget.paid / budget.planned) * 100) : 0;
+  const soonISO = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const soonTasks = tasks.filter((task) => task.status !== "Concluído" && /^\d{4}-\d{2}-\d{2}$/.test(task.due) && task.due >= todayISO() && task.due <= soonISO).length;
+  const openSuppliers = suppliers.items.filter((row) => row.status !== "Contratado").length;
+  const pendingInvites = Math.max(totalGuests - virtualSent, 0);
   return <div className="space-y-8">
+    {rsvpPending.length > 0 && (
+      <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+            <AlertTriangle className="size-4" />
+            {rsvpPending.length} família(s) passaram da data limite de confirmação
+          </div>
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => onView("guests")}>Abrir lista</Button>
+        </div>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {rsvpPending.map((item) => (
+            <li key={item.family} className="rounded-lg border border-destructive/25 bg-background px-3 py-2 text-xs">
+              <div className="font-medium">{item.family}</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">{item.waiting} sem resposta · prazo era {formatBR(item.deadline)}</div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-7 text-primary-foreground shadow-sm sm:px-9 sm:py-9">
       <div className="relative z-10 max-w-2xl"><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60"><Sparkles className="size-4" />Contagem regressiva</div><h1 className="font-serif text-[36px] leading-[1.05] sm:text-[48px]">O grande dia está<br className="hidden sm:block" /> chegando, Mirella.</h1><p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/68">Acompanhe cada detalhe da sua festa de 15 anos e deixe a organização mais leve.</p><div className="mt-7 flex items-end gap-3"><span className="font-serif text-[58px] leading-none sm:text-[68px]">{daysLeft}</span><span className="pb-1 text-sm text-primary-foreground/65">dias até<br />02.10.2026</span></div></div>
       <div className="absolute -right-5 -top-16 size-64 rounded-full border border-primary-foreground/10" /><div className="absolute -right-20 -bottom-36 size-96 rounded-full border border-primary-foreground/10" /><div className="absolute right-10 top-8 hidden h-44 w-44 rotate-12 rounded-full border border-primary-foreground/10 sm:block"><div className="absolute inset-6 rounded-full border border-primary-foreground/10" /></div>
@@ -353,7 +401,7 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric icon={ClipboardCheck} label="Tarefas concluídas" value={`${completedTasks} / ${tasks.length}`} detail={`${tasks.length - completedTasks} em aberto`} tone="rose" onClick={() => onView("tasks")} />
       <Metric icon={Users} label="Convidados confirmados" value={`${confirmedGuests}`} detail={`de ${totalGuests} convidados`} tone="gold" onClick={() => onView("guests")} />
-      <Metric icon={WalletCards} label="Saldo a pagar" value={money(34800)} detail="de R$ 50.600 previstos" tone="sage" onClick={() => onView("finance")} />
+      <Metric icon={WalletCards} label="Saldo a pagar" value={money(budget.remaining)} detail={`de ${money(budget.planned)} previstos`} tone="sage" onClick={() => onView("finance")} />
       <Metric icon={Send} label="Convites virtuais" value={`${virtualSent} / ${totalGuests}`} detail="já enviados" tone="lilac" onClick={() => onView("guests")} />
     </section>
 
@@ -384,7 +432,26 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
     </div>
 
-    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]"><section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Orçamento" title="Visão financeira" action="Ver detalhes" onClick={() => onView("finance")} /><div className="mt-7 flex items-end justify-between"><div><div className="text-xs text-muted-foreground">Total previsto</div><div className="mt-1 font-serif text-3xl">R$ 50.600</div></div><div className="text-right"><div className="text-xs text-muted-foreground">Pago até agora</div><div className="mt-1 font-semibold text-primary">R$ 15.800</div></div></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full w-[31%] rounded-full bg-primary" /></div><div className="mt-3 flex justify-between text-[11px] text-muted-foreground"><span>31% pago</span><span>Falta R$ 34.800</span></div></section><section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Para não esquecer" title="Atenções desta semana" /><div className="mt-5 grid gap-3 sm:grid-cols-3"><Attention icon={Clock3} title="3 prazos próximos" text="Nos próximos 7 dias" /><Attention icon={Store} title="4 fornecedores" text="Ainda sem contrato" /><Attention icon={Send} title="92 convites" text="Ainda não enviados" /></div></section></div>
+    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <SectionHeading eyebrow="Orçamento" title="Visão financeira" action="Ver detalhes" onClick={() => onView("finance")} />
+        <div className="mt-7 flex flex-wrap items-end justify-between gap-3">
+          <div><div className="text-xs text-muted-foreground">Total previsto</div><div className="mt-1 font-serif text-2xl sm:text-3xl">{money(budget.planned)}</div></div>
+          <div className="text-right"><div className="text-xs text-muted-foreground">Pago até agora</div><div className="mt-1 font-semibold text-primary">{money(budget.paid)}</div></div>
+        </div>
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, paidPercent)}%` }} /></div>
+        <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground"><span>{paidPercent}% pago</span><span>Falta {money(budget.remaining)}</span></div>
+        {budget.overdue > 0 && <div className="mt-2 text-[11px] font-medium text-destructive">{money(budget.overdue)} em parcelas atrasadas</div>}
+      </section>
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+        <SectionHeading eyebrow="Para não esquecer" title="Atenções desta semana" />
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Attention icon={Clock3} title={`${soonTasks} prazos próximos`} text="Nos próximos 7 dias" />
+          <Attention icon={Store} title={`${openSuppliers} fornecedores`} text="Ainda sem contrato" />
+          <Attention icon={Send} title={`${pendingInvites} convites`} text="Ainda não enviados" />
+        </div>
+      </section>
+    </div>
   </div>;
 }
 
@@ -766,16 +833,26 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           </div>
 
           <div className="space-y-4 p-4 sm:p-5">
-            {section.families.map(({ family, principal, members }) => (
+            {section.families.map(({ family, principal, members }) => {
+              const invite = familyInvites[family];
+              const waiting = [principal, ...members].filter((guest) => guest?.status === "Aguardando").length;
+              const late = Boolean(invite?.deadline) && invite!.deadline < todayISO() && waiting > 0;
+              return (
               <div key={family} className="rounded-xl border border-primary/20 bg-primary/[0.04]">
                 <div className="flex flex-col gap-3 border-b border-primary/15 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-primary">Família · principal</div>
                     <div className="mt-1 font-medium">{family}</div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
+                    {late && (
+                      <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+                        <AlertTriangle className="size-3" />
+                        Pendente: {waiting} sem resposta · prazo era {formatBR(invite!.deadline)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                  <PhysicalInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
+                  <FamilyInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     Responsável da família
                     <select
@@ -791,11 +868,11 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                   </div>
                 </div>
                 <div className="divide-y divide-border">
-                  {principal && <GuestRow guest={principal} isPrincipal families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
-                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
+                  {principal && <GuestRow guest={principal} isPrincipal inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
+                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
                 </div>
               </div>
-            ))}
+            );})}
 
             {section.singles.length > 0 && (
               <div className="rounded-xl border border-border">
@@ -814,7 +891,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   );
 }
 
-function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
+function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; inFamily?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
   return (
     <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-center gap-3">
@@ -832,13 +909,15 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
-            aria-pressed={guest.virtual}
-            title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
-            className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
-          ><Send className="size-3" /></button>
-          {guest.virtual && (
+          {!inFamily && (
+            <button
+              onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
+              aria-pressed={guest.virtual}
+              title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
+              className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
+            ><Send className="size-3" /></button>
+          )}
+          {!inFamily && guest.virtual && (
             <input
               type="date"
               aria-label={`Data do convite virtual de ${guest.name}`}
@@ -888,31 +967,70 @@ function formatBR(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
-  const sent = invite?.physical ?? false;
-  const at = invite?.physicalAt ?? "";
+const emptyInvite: FamilyInvite = { physical: false, physicalAt: "", virtual: false, virtualAt: "", deadline: "" };
+
+function FamilyInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
+  const current = { ...emptyInvite, ...(invite ?? {}) };
+  const patch = (values: Partial<FamilyInvite>) => onChange(family, { ...current, ...values });
   return (
-    <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${sent ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
-      <label className="flex cursor-pointer items-center gap-1.5">
-        <input
-          type="checkbox"
-          checked={sent}
-          aria-label={`Convite físico da família ${family}`}
-          onChange={(event) => onChange(family, event.target.checked ? { physical: true, physicalAt: at || todayISO() } : { physical: false, physicalAt: "" })}
-          className="size-3.5 accent-[hsl(var(--primary))]"
-        />
-        <Gift className="size-3.5" />
-        Convite físico
-      </label>
-      {sent && (
+    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.virtual ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed border-border text-muted-foreground"}`}>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={current.virtual}
+            aria-label={`Convite virtual da família ${family}`}
+            onChange={(event) => patch(event.target.checked ? { virtual: true, virtualAt: current.virtualAt || todayISO() } : { virtual: false, virtualAt: "" })}
+            className="size-3.5 accent-[hsl(var(--primary))]"
+          />
+          <Send className="size-3.5" />
+          Convite virtual
+        </label>
+        {current.virtual && (
+          <input
+            type="date"
+            aria-label={`Data de envio do convite virtual da família ${family}`}
+            value={current.virtualAt}
+            onChange={(event) => patch({ virtualAt: event.target.value })}
+            className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+          />
+        )}
+      </div>
+
+      <label className="flex flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-muted-foreground">
+        <Clock3 className="size-3.5" />
+        Retorno até
         <input
           type="date"
-          aria-label={`Data de entrega do convite físico da família ${family}`}
-          value={at}
-          onChange={(event) => onChange(family, { physical: true, physicalAt: event.target.value })}
+          aria-label={`Data limite de confirmação da família ${family}`}
+          value={current.deadline}
+          onChange={(event) => patch({ deadline: event.target.value })}
           className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
         />
-      )}
+      </label>
+
+      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.physical ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={current.physical}
+            aria-label={`Convite físico da família ${family}`}
+            onChange={(event) => patch(event.target.checked ? { physical: true, physicalAt: current.physicalAt || todayISO() } : { physical: false, physicalAt: "" })}
+            className="size-3.5 accent-[hsl(var(--primary))]"
+          />
+          <Gift className="size-3.5" />
+          Convite físico
+        </label>
+        {current.physical && (
+          <input
+            type="date"
+            aria-label={`Data de entrega do convite físico da família ${family}`}
+            value={current.physicalAt}
+            onChange={(event) => patch({ physicalAt: event.target.value })}
+            className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+          />
+        )}
+      </div>
     </div>
   );
 }

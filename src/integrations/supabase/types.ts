@@ -77,7 +77,10 @@ export type Database = {
           id: string
           invite_physical: boolean
           invite_physical_at: string | null
+          invite_virtual: boolean
+          invite_virtual_at: string | null
           name: string
+          rsvp_deadline: string | null
           updated_at: string
         }
         Insert: {
@@ -85,7 +88,10 @@ export type Database = {
           id?: string
           invite_physical?: boolean
           invite_physical_at?: string | null
+          invite_virtual?: boolean
+          invite_virtual_at?: string | null
           name: string
+          rsvp_deadline?: string | null
           updated_at?: string
         }
         Update: {
@@ -93,7 +99,10 @@ export type Database = {
           id?: string
           invite_physical?: boolean
           invite_physical_at?: string | null
+          invite_virtual?: boolean
+          invite_virtual_at?: string | null
           name?: string
+          rsvp_deadline?: string | null
           updated_at?: string
         }
         Relationships: []
