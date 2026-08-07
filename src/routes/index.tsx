@@ -138,6 +138,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   ...guest,
   status: index < 72 ? "Confirmado" : index < 98 ? "Aguardando" : "Não confirmado",
   virtual: index < 31,
+  virtualAt: "",
   physical: index < 14,
   personal: index < 6,
   child: typeof guest.age === "number" ? guest.age <= 10 : false,
@@ -247,7 +248,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, child: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, virtualAt: "", physical: false, personal: false, child: false, family: "", host: "" }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
