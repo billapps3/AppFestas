@@ -59,7 +59,7 @@ export const Route = createFileRoute("/")({
 
 function useSessionProfile() {
   const navigate = useNavigate();
-  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean }>({ ready: false, name: null, isAdmin: false });
+  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean; canFinance: boolean }>({ ready: false, name: null, isAdmin: false, canFinance: false });
 
   useEffect(() => {
     let active = true;
@@ -68,7 +68,7 @@ function useSessionProfile() {
       if (!active) return;
       if (!data.session) {
         navigate({ to: "/auth", replace: true });
-        setState({ ready: false, name: null, isAdmin: false });
+        setState({ ready: false, name: null, isAdmin: false, canFinance: false });
         return;
       }
       const [{ data: profile }, { data: roles }] = await Promise.all([
@@ -76,10 +76,13 @@ function useSessionProfile() {
         supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
       ]);
       if (!active) return;
+      const list = (roles ?? []).map((row) => row.role as string);
+      const isAdmin = list.includes("admin");
       setState({
         ready: true,
         name: profile?.display_name ?? data.session.user.email ?? "Perfil",
-        isAdmin: (roles ?? []).some((row) => row.role === "admin"),
+        isAdmin,
+        canFinance: isAdmin || !list.includes("aniversariante"),
       });
     };
     void load();
