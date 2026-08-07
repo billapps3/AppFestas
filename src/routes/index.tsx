@@ -229,7 +229,20 @@ function FestaApp() {
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
-  const virtualSent = guests.filter((guest) => guest.virtual).length;
+  const virtualSent = guests.filter((guest) => (guest.family ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
+
+  const rsvpPending = useMemo(() => {
+    const today = todayISO();
+    return Object.entries(familyInvites)
+      .filter(([, invite]) => invite.deadline && invite.deadline < today)
+      .map(([family, invite]) => ({
+        family,
+        deadline: invite.deadline,
+        waiting: guests.filter((guest) => guest.family === family && guest.status === "Aguardando").length,
+      }))
+      .filter((item) => item.waiting > 0)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  }, [familyInvites, guests]);
   const filteredGuests = useMemo(
     () => guests.filter((guest) => guest.name.toLowerCase().includes(search.toLowerCase()) && (hostFilter === "Todos" || (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter))),
     [guests, search, hostFilter],
@@ -323,7 +336,7 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && (
             <div className="space-y-6">
-              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} />
               <PushPanel isAdmin={session.isAdmin} />
             </div>
           )}
@@ -337,7 +350,9 @@ function FestaApp() {
   );
 }
 
-function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
+type RsvpPending = { family: string; deadline: string; waiting: number };
+
+function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
   const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
@@ -345,6 +360,25 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
   const children = guests.filter((guest) => guest.child).length;
   const inviteBalance = totalGuests - children - declined;
   return <div className="space-y-8">
+    {rsvpPending.length > 0 && (
+      <section className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+            <AlertTriangle className="size-4" />
+            {rsvpPending.length} família(s) passaram da data limite de confirmação
+          </div>
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => onView("guests")}>Abrir lista</Button>
+        </div>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {rsvpPending.map((item) => (
+            <li key={item.family} className="rounded-lg border border-destructive/25 bg-background px-3 py-2 text-xs">
+              <div className="font-medium">{item.family}</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">{item.waiting} sem resposta · prazo era {formatBR(item.deadline)}</div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-7 text-primary-foreground shadow-sm sm:px-9 sm:py-9">
       <div className="relative z-10 max-w-2xl"><div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60"><Sparkles className="size-4" />Contagem regressiva</div><h1 className="font-serif text-[36px] leading-[1.05] sm:text-[48px]">O grande dia está<br className="hidden sm:block" /> chegando, Mirella.</h1><p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/68">Acompanhe cada detalhe da sua festa de 15 anos e deixe a organização mais leve.</p><div className="mt-7 flex items-end gap-3"><span className="font-serif text-[58px] leading-none sm:text-[68px]">{daysLeft}</span><span className="pb-1 text-sm text-primary-foreground/65">dias até<br />02.10.2026</span></div></div>
       <div className="absolute -right-5 -top-16 size-64 rounded-full border border-primary-foreground/10" /><div className="absolute -right-20 -bottom-36 size-96 rounded-full border border-primary-foreground/10" /><div className="absolute right-10 top-8 hidden h-44 w-44 rotate-12 rounded-full border border-primary-foreground/10 sm:block"><div className="absolute inset-6 rounded-full border border-primary-foreground/10" /></div>
