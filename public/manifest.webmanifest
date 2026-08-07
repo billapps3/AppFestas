@@ -1,0 +1,16 @@
+{
+  "name": "Mirella 15 — Organização da festa",
+  "short_name": "Mirella 15",
+  "description": "Painel para organizar convidados, tarefas, fornecedores e orçamento da festa.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff7f7",
+  "theme_color": "#f6c9cf",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
