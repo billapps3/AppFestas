@@ -10,6 +10,7 @@ import { computeTotals, sumTotals } from "@/lib/finance-math";
 import { InstallmentsPanel } from "@/components/installments-panel";
 import {
   ArrowUpRight,
+  AlertTriangle,
   Baby,
   Bell,
   CalendarDays,
