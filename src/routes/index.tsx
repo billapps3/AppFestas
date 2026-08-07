@@ -875,7 +875,7 @@ function formatBR(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite?: FamilyInvite; onChange: (family: string, invite: FamilyInvite) => void }) {
+function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
   const sent = invite?.physical ?? false;
   const at = invite?.physicalAt ?? "";
   return (
