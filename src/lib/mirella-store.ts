@@ -18,6 +18,7 @@ export type StoredGuest = {
   phone?: string | undefined;
   status: string;
   virtual: boolean;
+  virtualAt: string;
   physical: boolean;
   personal: boolean;
   child: boolean;
@@ -54,6 +55,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     phone: row.phone ?? undefined,
     status: row.status,
     virtual: row.invite_virtual,
+    virtualAt: row.invite_virtual_at ?? "",
     physical: row.invite_physical,
     personal: row.invite_personal,
     child: row.is_child ?? false,
@@ -100,6 +102,7 @@ export async function saveMirellaState(state: MirellaState) {
     is_child: guest.child,
     status: guest.status,
     invite_virtual: guest.virtual,
+    invite_virtual_at: guest.virtualAt || null,
     invite_physical: guest.physical,
     invite_personal: guest.personal,
     is_primary: Boolean(guest.family) && guest.family === guest.name,
@@ -130,4 +133,22 @@ export async function saveMirellaState(state: MirellaState) {
       .delete()
       .not("legacy_id", "in", `(${tasks.map((task) => task.id).join(",")})`);
   }
+}
+
+export type FamilyInvite = { physical: boolean; physicalAt: string };
+
+export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
+  const { data } = await supabase.from("families").select("name, invite_physical, invite_physical_at");
+  const map: Record<string, FamilyInvite> = {};
+  for (const row of data ?? []) {
+    map[row.name] = { physical: row.invite_physical ?? false, physicalAt: row.invite_physical_at ?? "" };
+  }
+  return map;
+}
+
+export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
+  if (!name) return;
+  await supabase
+    .from("families")
+    .upsert({ name, invite_physical: invite.physical, invite_physical_at: invite.physicalAt || null }, { onConflict: "name" });
 }

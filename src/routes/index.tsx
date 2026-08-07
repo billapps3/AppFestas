@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
-import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
+import { loadFamilyInvites, loadMirellaState, saveFamilyInvite, saveMirellaState, type FamilyInvite } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
 import { computeTotals, sumTotals } from "@/lib/finance-math";
@@ -106,6 +106,7 @@ type Guest = {
   phone?: string;
   status: GuestStatus;
   virtual: boolean;
+  virtualAt: string;
   physical: boolean;
   personal: boolean;
   child: boolean;
@@ -137,6 +138,7 @@ const guestNames: Guest[] = importedGuests.map((guest, index) => ({
   ...guest,
   status: index < 72 ? "Confirmado" : index < 98 ? "Aguardando" : "Não confirmado",
   virtual: index < 31,
+  virtualAt: "",
   physical: index < 14,
   personal: index < 6,
   child: typeof guest.age === "number" ? guest.age <= 10 : false,
@@ -169,6 +171,16 @@ function FestaApp() {
   const [daysLeft, setDaysLeft] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
+
+  useEffect(() => {
+    void loadFamilyInvites().then(setFamilyInvites);
+  }, []);
+
+  const setFamilyPhysical = (family: string, invite: FamilyInvite) => {
+    setFamilyInvites((current) => ({ ...current, [family]: invite }));
+    void saveFamilyInvite(family, invite);
+  };
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -246,7 +258,7 @@ function FestaApp() {
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, physical: false, personal: false, child: false, family: "", host: "" }]);
+    setGuests((current) => [...current, { id: Math.max(0, ...current.map((item) => item.id)) + 1, name, status: "Aguardando", virtual: false, virtualAt: "", physical: false, personal: false, child: false, family: "", host: "" }]);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -303,7 +315,7 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} onTaskStatus={changeTaskStatus} onView={selectView} />}
           {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
-          {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} />}
+          {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
           {view === "suppliers" && <SuppliersView />}
           {view === "finance" && <FinanceView />}
         </main>
@@ -645,9 +657,11 @@ type GuestsViewProps = {
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
   onFamilyHost: (family: string, host: string) => void;
+  familyInvites: Record<string, FamilyInvite>;
+  onFamilyPhysical: (family: string, invite: FamilyInvite) => void;
 };
 
-function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost }: GuestsViewProps) {
+function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostFilter, showForm, setShowForm, newGuest, setNewGuest, addGuest, onStatus, onUpdate, onFamilyHost, familyInvites, onFamilyPhysical }: GuestsViewProps) {
   const familyOptions = useMemo(
     () =>
       Array.from(new Set([...extraFamilies, ...allGuests.filter((guest) => guest.family).map((guest) => guest.family)])).sort((a, b) =>
@@ -747,6 +761,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                     <div className="mt-1 font-medium">{family}</div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                  <PhysicalInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     Responsável da família
                     <select
@@ -759,6 +775,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                       {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
                     </select>
                   </label>
+                  </div>
                 </div>
                 <div className="divide-y divide-border">
                   {principal && <GuestRow guest={principal} isPrincipal families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
@@ -801,9 +818,25 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1">
-          <button onClick={() => onUpdate(guest.id, { virtual: !guest.virtual })} title="Convite virtual" className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}><Send className="size-3" /></button>
-          <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
+            aria-pressed={guest.virtual}
+            title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
+            className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
+          ><Send className="size-3" /></button>
+          {guest.virtual && (
+            <input
+              type="date"
+              aria-label={`Data do convite virtual de ${guest.name}`}
+              value={guest.virtualAt}
+              onChange={(event) => onUpdate(guest.id, { virtualAt: event.target.value })}
+              className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] outline-none"
+            />
+          )}
+          {!guest.family && (
+            <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+          )}
           <button onClick={() => onUpdate(guest.id, { child: !guest.child })} aria-pressed={guest.child} title="Criança até 10 anos (não pagante)" className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
         </div>
 
@@ -830,6 +863,43 @@ function GuestRow({ guest, isPrincipal, families, onStatus, onUpdate }: { guest:
 
         <GuestStatusSelect guest={guest} onStatus={onStatus} />
       </div>
+    </div>
+  );
+}
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function formatBR(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "sem data";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function PhysicalInviteControl({ family, invite, onChange }: { family: string; invite: FamilyInvite | undefined; onChange: (family: string, invite: FamilyInvite) => void }) {
+  const sent = invite?.physical ?? false;
+  const at = invite?.physicalAt ?? "";
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 text-[11px] ${sent ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
+      <label className="flex cursor-pointer items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={sent}
+          aria-label={`Convite físico da família ${family}`}
+          onChange={(event) => onChange(family, event.target.checked ? { physical: true, physicalAt: at || todayISO() } : { physical: false, physicalAt: "" })}
+          className="size-3.5 accent-[hsl(var(--primary))]"
+        />
+        <Gift className="size-3.5" />
+        Convite físico
+      </label>
+      {sent && (
+        <input
+          type="date"
+          aria-label={`Data de entrega do convite físico da família ${family}`}
+          value={at}
+          onChange={(event) => onChange(family, { physical: true, physicalAt: event.target.value })}
+          className="h-7 rounded-md border border-border bg-background px-1.5 text-[10px] text-foreground outline-none"
+        />
+      )}
     </div>
   );
 }
