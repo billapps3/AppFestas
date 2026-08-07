@@ -106,6 +106,7 @@ type Guest = {
   phone?: string;
   status: GuestStatus;
   virtual: boolean;
+  virtualAt: string;
   physical: boolean;
   personal: boolean;
   child: boolean;
