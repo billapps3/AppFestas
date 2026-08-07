@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { loadMirellaState, saveMirellaState } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
@@ -50,6 +51,35 @@ export const Route = createFileRoute("/")({
   }),
   component: FestaApp,
 });
+
+function useSessionProfile() {
+  const navigate = useNavigate();
+  const [state, setState] = useState<{ ready: boolean; name: string | null }>({ ready: false, name: null });
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!data.session) {
+        navigate({ to: "/auth", replace: true });
+        setState({ ready: false, name: null });
+        return;
+      }
+      const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle();
+      if (!active) return;
+      setState({ ready: true, name: profile?.display_name ?? data.session.user.email ?? "Perfil" });
+    };
+    void load();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") navigate({ to: "/auth", replace: true });
+      if (event === "SIGNED_IN") void load();
+    });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, [navigate]);
+
+  return state;
+}
 
 type View = "overview" | "tasks" | "guests" | "suppliers" | "finance";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
