@@ -269,7 +269,7 @@ export function InstallmentsPanel({ parent, items, onCreate, onCreateMany, onSet
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "danger" }) {
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "danger" | undefined }) {
   return (
     <div className="min-w-0 rounded-md border border-border bg-background px-2 py-1.5">
       <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>

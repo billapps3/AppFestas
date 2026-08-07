@@ -942,6 +942,7 @@ function SuppliersView() {
                   parent={{ supplierId: item.id }}
                   items={parcels.forSupplier(item.id)}
                   onCreate={(values) => void parcels.create(values)}
+                  onCreateMany={(list) => void parcels.createMany({ supplierId: item.id }, list)}
                   onSettle={(parcel, paidAt, payer) => void parcels.settle(parcel, paidAt, payer)}
                   onReopen={(parcel) => void parcels.reopen(parcel)}
                   onRemove={(parcel) => { if (confirm("Excluir esta parcela?")) void parcels.remove(parcel); }}
@@ -1041,6 +1042,7 @@ function FinanceView() {
                         parent={{ expenseId: row.id }}
                         items={parcels.forExpense(row.id)}
                         onCreate={(values) => void parcels.create(values)}
+                        onCreateMany={(list) => void parcels.createMany({ expenseId: row.id }, list)}
                         onSettle={(parcel, paidAt, payer) => void parcels.settle(parcel, paidAt, payer)}
                         onReopen={(parcel) => void parcels.reopen(parcel)}
                         onRemove={(parcel) => { if (confirm("Excluir esta parcela?")) void parcels.remove(parcel); }}
