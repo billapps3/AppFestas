@@ -73,7 +73,7 @@ function useSessionProfile() {
         return;
       }
       const [{ data: profile }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("display_name").eq("id", data.session.user.id).maybeSingle(),
+        supabase.from("profiles").select("display_name, can_finance").eq("id", data.session.user.id).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
       ]);
       if (!active) return;
@@ -83,7 +83,7 @@ function useSessionProfile() {
         ready: true,
         name: profile?.display_name ?? data.session.user.email ?? "Perfil",
         isAdmin,
-        canFinance: isAdmin || !list.includes("aniversariante"),
+        canFinance: isAdmin || (!list.includes("aniversariante") && (profile?.can_finance ?? true)),
       });
     };
     void load();
