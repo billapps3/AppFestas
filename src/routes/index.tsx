@@ -761,6 +761,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                     <div className="mt-1 font-medium">{family}</div>
                     <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                  <PhysicalInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     Responsável da família
                     <select
@@ -773,6 +775,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                       {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
                     </select>
                   </label>
+                  </div>
                 </div>
                 <div className="divide-y divide-border">
                   {principal && <GuestRow guest={principal} isPrincipal families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
