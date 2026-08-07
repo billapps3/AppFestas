@@ -4,9 +4,9 @@ export const Route = createFileRoute("/api/public/hooks/push-digest")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["PUSH_CRON_SECRET"];
-        const token = request.headers.get("authorization")?.replace("Bearer ", "");
-        if (!secret || token !== secret) {
+        const expected = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["SUPABASE_ANON_KEY"];
+        const apikey = request.headers.get("apikey");
+        if (!expected || apikey !== expected) {
           return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
         }
         const { buildDigest, deliverPush } = await import("@/lib/push.server");
