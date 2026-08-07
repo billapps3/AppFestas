@@ -128,6 +128,8 @@ const taskOwners = ["William", "Késya", "Mirella"];
 const taskPriorities: Task["priority"][] = ["Alta", "Média", "Baixa"];
 const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
+const groupFamilies = new Set(extraFamilies);
+const isGroupFamily = (family: string) => groupFamilies.has(family);
 const seedFamilies: Record<number, string> = { 14: "Tio Luiz Carlos Nogueira", 15: "Tio Luiz Carlos Nogueira", 16: "Tio Luiz Carlos Nogueira", 17: "Tio Luiz Carlos Nogueira", 18: "Tio Luiz Carlos Nogueira" };
 
 const taskSeed: Task[] = [
@@ -230,12 +232,13 @@ function FestaApp() {
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
-  const virtualSent = guests.filter((guest) => (guest.family ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
+  const virtualSent = guests.filter((guest) => (guest.family && !isGroupFamily(guest.family) ? familyInvites[guest.family]?.virtual : guest.virtual)).length;
 
   const rsvpPending = useMemo(() => {
     const today = todayISO();
     return Object.entries(familyInvites)
       .filter(([, invite]) => invite.deadline && invite.deadline < today)
+      .filter(([family]) => !isGroupFamily(family))
       .map(([family, invite]) => ({
         family,
         deadline: invite.deadline,
@@ -835,15 +838,20 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
           <div className="space-y-4 p-4 sm:p-5">
             {section.families.map(({ family, principal, members }) => {
               const invite = familyInvites[family];
+              const isGroup = isGroupFamily(family);
               const waiting = [principal, ...members].filter((guest) => guest?.status === "Aguardando").length;
-              const late = Boolean(invite?.deadline) && invite!.deadline < todayISO() && waiting > 0;
+              const late = !isGroup && Boolean(invite?.deadline) && invite!.deadline < todayISO() && waiting > 0;
               return (
               <div key={family} className="rounded-xl border border-primary/20 bg-primary/[0.04]">
                 <div className="flex flex-col gap-3 border-b border-primary/15 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-primary">Família · principal</div>
+                    <div className="text-[10px] uppercase tracking-wider text-primary">{isGroup ? "Grupo · convites individuais" : "Família · principal"}</div>
                     <div className="mt-1 font-medium">{family}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">{members.length} dependente(s) · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      {isGroup
+                        ? `${[principal, ...members].filter(Boolean).length} convidado(s)`
+                        : `${members.length} dependente(s)`} · {[principal, ...members].filter((guest) => guest?.status === "Confirmado").length} confirmado(s)
+                    </div>
                     {late && (
                       <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
                         <AlertTriangle className="size-3" />
@@ -852,11 +860,11 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                  <FamilyInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />
+                  {!isGroup && <FamilyInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />}
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    Responsável da família
+                    {isGroup ? "Responsável do grupo" : "Responsável da família"}
                     <select
-                      aria-label={`Responsável da família ${family}`}
+                      aria-label={`Responsável ${isGroup ? "do grupo" : "da família"} ${family}`}
                       value={principal?.host ?? section.people.find((guest) => guest.family === family)?.host ?? ""}
                       onChange={(event) => onFamilyHost(family, event.target.value)}
                       className="rounded-md border border-border bg-background px-2 py-1.5 text-[11px] font-medium text-foreground outline-none"
@@ -868,8 +876,8 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                   </div>
                 </div>
                 <div className="divide-y divide-border">
-                  {principal && <GuestRow guest={principal} isPrincipal inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
-                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} inFamily families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
+                  {principal && <GuestRow guest={principal} isPrincipal={!isGroup} inFamily={!isGroup} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />}
+                  {members.map((guest) => <GuestRow key={guest.id} guest={guest} inFamily={!isGroup} families={familyOptions} onStatus={onStatus} onUpdate={onUpdate} />)}
                 </div>
               </div>
             );})}
