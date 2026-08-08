@@ -431,6 +431,44 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          audience_roles: Database["public"]["Enums"]["event_member_role"][]
+          created_at: string
+          enabled: boolean
+          event_id: string
+          id: string
+          kind: string
+          updated_at: string
+        }
+        Insert: {
+          audience_roles?: Database["public"]["Enums"]["event_member_role"][]
+          created_at?: string
+          enabled?: boolean
+          event_id: string
+          id?: string
+          kind: string
+          updated_at?: string
+        }
+        Update: {
+          audience_roles?: Database["public"]["Enums"]["event_member_role"][]
+          created_at?: string
+          enabled?: boolean
+          event_id?: string
+          id?: string
+          kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payers: {
         Row: {
           created_at: string
@@ -495,42 +533,63 @@ export type Database = {
       }
       push_messages: {
         Row: {
+          audience_roles: Database["public"]["Enums"]["event_member_role"][]
+          audience_user_ids: string[]
           automatic: boolean
           body: string
           created_at: string
           delivered: number
+          event_id: string | null
           id: string
+          kind: string
           sent_by: string | null
           title: string
           url: string | null
         }
         Insert: {
+          audience_roles?: Database["public"]["Enums"]["event_member_role"][]
+          audience_user_ids?: string[]
           automatic?: boolean
           body: string
           created_at?: string
           delivered?: number
+          event_id?: string | null
           id?: string
+          kind?: string
           sent_by?: string | null
           title: string
           url?: string | null
         }
         Update: {
+          audience_roles?: Database["public"]["Enums"]["event_member_role"][]
+          audience_user_ids?: string[]
           automatic?: boolean
           body?: string
           created_at?: string
           delivered?: number
+          event_id?: string | null
           id?: string
+          kind?: string
           sent_by?: string | null
           title?: string
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "push_messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
           auth: string
           created_at: string
           endpoint: string
+          event_id: string | null
           id: string
           label: string | null
           p256dh: string
@@ -541,6 +600,7 @@ export type Database = {
           auth: string
           created_at?: string
           endpoint: string
+          event_id?: string | null
           id?: string
           label?: string | null
           p256dh: string
@@ -551,13 +611,22 @@ export type Database = {
           auth?: string
           created_at?: string
           endpoint?: string
+          event_id?: string | null
           id?: string
           label?: string | null
           p256dh?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
