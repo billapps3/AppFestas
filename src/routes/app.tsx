@@ -47,12 +47,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [
-      { title: "Mirella 15 — Organização da festa" },
+      { title: "Painel do evento — Festa Simples" },
       { name: "description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
-      { property: "og:title", content: "Mirella 15 — Organização da festa" },
+      { property: "og:title", content: "Painel do evento — Festa Simples" },
       { property: "og:description", content: "Painel visual para organizar convidados, tarefas, fornecedores e orçamento do aniversário de 15 anos da Mirella." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
