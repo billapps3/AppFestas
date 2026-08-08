@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiPublicHooksPushDigestRouteImport } from './routes/api/public/hooks/push-digest'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -31,30 +37,34 @@ const ApiPublicHooksPushDigestRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/api/public/hooks/push-digest': typeof ApiPublicHooksPushDigestRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/api/public/hooks/push-digest': typeof ApiPublicHooksPushDigestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/api/public/hooks/push-digest': typeof ApiPublicHooksPushDigestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/app' | '/auth' | '/api/public/hooks/push-digest'
+  fullPaths: '/' | '/app' | '/auth' | '/api/public/hooks/push-digest'
   fileRoutesByTo: FileRoutesByTo
-  to: '/app' | '/auth' | '/api/public/hooks/push-digest'
-  id: '__root__' | '/app' | '/auth' | '/api/public/hooks/push-digest'
+  to: '/' | '/app' | '/auth' | '/api/public/hooks/push-digest'
+  id: '__root__' | '/' | '/app' | '/auth' | '/api/public/hooks/push-digest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRoute
   AuthRoute: typeof AuthRoute
   ApiPublicHooksPushDigestRoute: typeof ApiPublicHooksPushDigestRoute
@@ -62,6 +72,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AppRoute: AppRoute,
   AuthRoute: AuthRoute,
   ApiPublicHooksPushDigestRoute: ApiPublicHooksPushDigestRoute,
