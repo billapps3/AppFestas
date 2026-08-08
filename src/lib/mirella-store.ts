@@ -60,7 +60,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     virtualAt: row.invite_virtual_at ?? "",
     physical: row.invite_physical,
     personal: row.invite_personal,
-    child: row.is_child ?? false,
+    child: typeof row.age === "number" && row.age > 10 ? false : row.is_child ?? false,
     deadline: row.rsvp_deadline ?? "",
     family: (row.family_id && families.byId.get(row.family_id)) || "",
     host: (row.host_id && hosts.byId.get(row.host_id)) || "",
