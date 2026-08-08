@@ -398,6 +398,9 @@ function FestaApp() {
           )}
           {view === "tasks" && session.can.tasks && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
+          {view === "guests" && session.role === "rsvp" && (
+            <div className="mt-6"><PushPanel isAdmin={false} eventId={session.activeEventId} /></div>
+          )}
           {view === "team" && session.can.team && <TeamPanel eventId={session.activeEventId} canManage={session.can.team} currentUserId={session.userId} />}
           {view === "suppliers" && session.can.finance && <SuppliersView />}
           {view === "finance" && session.can.finance && <FinanceView />}
