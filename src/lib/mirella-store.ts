@@ -84,7 +84,7 @@ async function ensureNames(table: "families" | "hosts", names: string[]) {
   const existing = await nameMap(table);
   const missing = names.filter((name) => name && !existing.byName.has(name));
   if (missing.length) {
-    await supabase.from(table).upsert(missing.map((name) => ({ name, event_id: activeEventId() })), { onConflict: "name" });
+    await supabase.from(table).upsert(missing.map((name) => ({ name, event_id: activeEventId() })), { onConflict: "event_id,name" });
     return (await nameMap(table)).byName;
   }
   return existing.byName;
@@ -116,7 +116,7 @@ export async function saveMirellaState(state: MirellaState) {
     host_id: guest.host ? hostIds.get(guest.host) ?? null : null,
   }));
 
-  const { error: guestError } = await supabase.from("guests").upsert(guestRows, { onConflict: "legacy_id" });
+  const { error: guestError } = await supabase.from("guests").upsert(guestRows, { onConflict: "event_id,legacy_id" });
   if (guestError) throw guestError;
 
   if (tasks.length) {
@@ -132,7 +132,7 @@ export async function saveMirellaState(state: MirellaState) {
         priority: task.priority,
         parent_legacy_id: task.parent ?? null,
       })),
-      { onConflict: "legacy_id" },
+      { onConflict: "event_id,legacy_id" },
     );
     if (taskError) throw taskError;
     await supabase
@@ -177,6 +177,6 @@ export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
         invite_virtual_at: invite.virtualAt || null,
         rsvp_deadline: invite.deadline || null,
       },
-      { onConflict: "name" },
+      { onConflict: "event_id,name" },
     );
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { setActiveEvent } from "@/lib/active-event";
 
 export type EventRole = "owner" | "organizer" | "planner" | "rsvp" | "celebrant" | "viewer";
 
@@ -46,7 +47,6 @@ export type EventAccess = {
   reload: () => Promise<void>;
 };
 
-const STORAGE_KEY = "festa-active-event";
 
 const permissionsFor = (role: EventRole | null) => ({
   guests: role !== null,
@@ -90,8 +90,9 @@ export function useEventAccess(): EventAccess {
       })
       .filter((item): item is EventSummary => item !== null);
 
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem("festa-active-event") : null;
     const activeEventId = events.find((event) => event.id === stored)?.id ?? events[0]?.id ?? null;
+    setActiveEvent(activeEventId);
 
     setState({
       ready: true,
@@ -113,7 +114,7 @@ export function useEventAccess(): EventAccess {
   }, [load]);
 
   const setActiveEventId = useCallback((id: string) => {
-    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id);
+    setActiveEvent(id);
     setState((current) => ({ ...current, activeEventId: id }));
   }, []);
 
