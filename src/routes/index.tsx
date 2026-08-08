@@ -1048,8 +1048,8 @@ function FamilyInviteControl({ family, invite, onChange }: { family: string; inv
   const current = { ...emptyInvite, ...(invite ?? {}) };
   const patch = (values: Partial<FamilyInvite>) => onChange(family, { ...current, ...values });
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.virtual ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed border-border text-muted-foreground"}`}>
+    <div className="grid gap-2 text-[11px] sm:col-span-2 sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center">
+      <div className={`flex min-w-0 flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.virtual ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed border-border text-muted-foreground"}`}>
         <label className="flex cursor-pointer items-center gap-1.5">
           <input
             type="checkbox"
@@ -1072,7 +1072,7 @@ function FamilyInviteControl({ family, invite, onChange }: { family: string; inv
         )}
       </div>
 
-      <label className="flex flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-muted-foreground">
+      <label className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-muted-foreground">
         <Clock3 className="size-3.5" />
         Retorno até
         <input
@@ -1084,7 +1084,7 @@ function FamilyInviteControl({ family, invite, onChange }: { family: string; inv
         />
       </label>
 
-      <div className={`flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.physical ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
+      <div className={`flex min-w-0 flex-wrap items-center gap-2 rounded-md border px-2 py-1.5 ${current.physical ? "border-accent bg-accent/40 text-accent-foreground" : "border-dashed border-border text-muted-foreground"}`}>
         <label className="flex cursor-pointer items-center gap-1.5">
           <input
             type="checkbox"
