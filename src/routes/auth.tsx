@@ -32,7 +32,7 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/", replace: true });
+      if (data.session) navigate({ to: "/app", replace: true });
     });
   }, [navigate]);
 
@@ -51,7 +51,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/", replace: true });
+        navigate({ to: "/app", replace: true });
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
@@ -68,7 +68,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/", replace: true });
+    navigate({ to: "/app", replace: true });
   };
 
   return (
