@@ -90,7 +90,7 @@ function useSessionProfile() {
 
 type View = "overview" | "tasks" | "guests" | "suppliers" | "finance" | "team";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
-type GuestStatus = "Confirmado" | "Aguardando" | "Não confirmado";
+type GuestStatus = "Confirmado" | "Aguardando" | "Não confirmado" | "Declinado";
 
 type Task = {
   id: number;
@@ -392,10 +392,11 @@ type RsvpPending = { family: string; deadline: string; waiting: number };
 function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView, canFinance }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void; canFinance: boolean }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
-  const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
+  const declined = guests.filter((guest) => guest.status === "Declinado").length;
+  const notConfirmed = guests.filter((guest) => guest.status === "Não confirmado").length;
   const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
   const children = guests.filter((guest) => guest.child).length;
-  const inviteBalance = totalGuests - children - declined;
+  const inviteBalance = totalGuests - children - declined - notConfirmed;
 
   const expenses = useExpenses();
   const suppliers = useSuppliers();
@@ -447,10 +448,11 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
         {[
           { label: "Total de convidados", value: totalGuests, hint: "pessoas na lista" },
           { label: "Confirmados", value: confirmed, hint: "vão comparecer" },
-          { label: "Declinados", value: declined, hint: "não vão" },
+          { label: "Declinados", value: declined, hint: "avisaram que não vão" },
+          { label: "Não confirmados", value: notConfirmed, hint: "sem confirmação" },
           { label: "Aguardando", value: waiting, hint: "sem resposta" },
           { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
-          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados" },
+          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados/não confirmados" },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-border bg-background p-4">
             <div className="text-[11px] leading-tight text-muted-foreground">{item.label}</div>
@@ -807,10 +809,11 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
-    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Declinado").length },
+    { label: "Não confirmados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
     { label: "Crianças até 10 anos", value: guests.filter((guest) => guest.child).length },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado" || guest.status === "Declinado").length },
   ];
 
   return (
@@ -1098,10 +1101,11 @@ function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: n
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted text-muted-foreground"}`}
+      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : guest.status === "Declinado" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted text-muted-foreground"}`}
     >
       <option>Confirmado</option>
       <option>Aguardando</option>
+      <option>Declinado</option>
       <option>Não confirmado</option>
     </select>
   );
