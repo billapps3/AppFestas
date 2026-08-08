@@ -207,7 +207,12 @@ function FestaApp() {
       .then((state) => {
         if (!active || !state) return;
         if (state.tasks?.length) setTasks(state.tasks as Task[]);
-        if (state.guests?.length) setGuests(state.guests as Guest[]);
+        if (state.guests?.length) {
+          setGuests(state.guests.map((guest) => ({
+            ...guest,
+            status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
+          })) as Guest[]);
+        }
       })
       .finally(() => {
         if (active) setLoaded(true);
@@ -1101,13 +1106,12 @@ function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: n
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : guest.status === "Declinado" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted text-muted-foreground"}`}
-    >
-      <option>Confirmado</option>
-      <option>Aguardando</option>
-      <option>Declinado</option>
-      <option>Não confirmado</option>
-    </select>
+       className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+     >
+       <option>Confirmado</option>
+       <option>Aguardando</option>
+       <option>Declinado</option>
+     </select>
   );
 }
 
