@@ -161,7 +161,7 @@ export const notifyTaskDone = createServerFn({ method: "POST" })
 
 export const notifyGuestRsvp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { eventId: string; guestName: string; status: string; family?: string }) => {
+  .inputValidator((data: { eventId: string; guestName: string; status: string; family?: string | undefined }) => {
     if (!data?.eventId || !data?.guestName) throw new Error("Dados inválidos");
     if (!["Confirmado", "Declinado"].includes(data.status)) throw new Error("Status sem aviso");
     return { eventId: data.eventId, guestName: data.guestName.slice(0, 120), status: data.status, family: data.family?.slice(0, 80) };
