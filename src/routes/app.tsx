@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { PushPanel } from "@/components/push-panel";
+import { notifyGuestRsvp, notifyTaskDone } from "@/lib/push.functions";
 import { TeamPanel } from "@/components/team-panel";
 import { useEventAccess, eventRoleLabel } from "@/lib/event-access";
 import { acceptMyInvites } from "@/lib/team.functions";
