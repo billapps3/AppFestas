@@ -177,9 +177,17 @@ export const updateNotificationSettings = createServerFn({ method: "POST" })
 type SettingsReader = {
   from: (table: "notification_settings") => {
     select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => PromiseLike<{ data: { enabled: boolean; audience_roles: string[] | null } | null }>;
+      eq: (
+        column: string,
+        value: string,
+      ) => {
+        eq: (
+          column: string,
+          value: string,
+        ) => {
+          maybeSingle: () => PromiseLike<{
+            data: { enabled: boolean; audience_roles: string[] | null } | null;
+          }>;
         };
       };
     };
