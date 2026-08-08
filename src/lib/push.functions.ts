@@ -174,11 +174,19 @@ export const updateNotificationSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-async function automaticAudience(
-  client: { from: (table: "notification_settings") => any },
-  eventId: string,
-  kind: AutoKind,
-) {
+type SettingsReader = {
+  from: (table: "notification_settings") => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        eq: (column: string, value: string) => {
+          maybeSingle: () => PromiseLike<{ data: { enabled: boolean; audience_roles: string[] | null } | null }>;
+        };
+      };
+    };
+  };
+};
+
+async function automaticAudience(client: SettingsReader, eventId: string, kind: AutoKind) {
   const { data } = await client
     .from("notification_settings")
     .select("enabled, audience_roles")
@@ -186,7 +194,7 @@ async function automaticAudience(
     .eq("kind", kind)
     .maybeSingle();
   if (!data || data.enabled === false) return null;
-  const roles = sanitizeRoles(data.audience_roles as string[]);
+  const roles = sanitizeRoles(data.audience_roles ?? []);
   return roles.length ? roles : null;
 }
 
