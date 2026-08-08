@@ -90,7 +90,7 @@ function useSessionProfile() {
 
 type View = "overview" | "tasks" | "guests" | "suppliers" | "finance" | "team";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
-type GuestStatus = "Confirmado" | "Aguardando" | "Não confirmado";
+type GuestStatus = "Confirmado" | "Aguardando" | "Não confirmado" | "Declinado";
 
 type Task = {
   id: number;
@@ -392,10 +392,11 @@ type RsvpPending = { family: string; deadline: string; waiting: number };
 function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virtualSent, tasks, guests, rsvpPending, onTaskStatus, onView, canFinance }: { daysLeft: number; completedTasks: number; confirmedGuests: number; totalGuests: number; virtualSent: number; tasks: Task[]; guests: Guest[]; rsvpPending: RsvpPending[]; onTaskStatus: (id: number) => void; onView: (view: View) => void; canFinance: boolean }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
   const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
-  const declined = guests.filter((guest) => guest.status === "Não confirmado").length;
+  const declined = guests.filter((guest) => guest.status === "Declinado").length;
+  const notConfirmed = guests.filter((guest) => guest.status === "Não confirmado").length;
   const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
   const children = guests.filter((guest) => guest.child).length;
-  const inviteBalance = totalGuests - children - declined;
+  const inviteBalance = totalGuests - children - declined - notConfirmed;
 
   const expenses = useExpenses();
   const suppliers = useSuppliers();
@@ -447,10 +448,11 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
         {[
           { label: "Total de convidados", value: totalGuests, hint: "pessoas na lista" },
           { label: "Confirmados", value: confirmed, hint: "vão comparecer" },
-          { label: "Declinados", value: declined, hint: "não vão" },
+          { label: "Declinados", value: declined, hint: "avisaram que não vão" },
+          { label: "Não confirmados", value: notConfirmed, hint: "sem confirmação" },
           { label: "Aguardando", value: waiting, hint: "sem resposta" },
           { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
-          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados" },
+          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados/não confirmados" },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-border bg-background p-4">
             <div className="text-[11px] leading-tight text-muted-foreground">{item.label}</div>
@@ -465,7 +467,7 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
 
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Acompanhe de perto" title="Próximos prazos" action="Ver todas" onClick={() => onView("tasks")} /><div className="mt-6 space-y-1">{upcoming.map((task, index) => <TaskRow key={task.id} task={task} onStatus={onTaskStatus} first={index === 0} />)}</div></section>
-      <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={guests.filter((guest) => guest.status === "Aguardando").length} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={guests.filter((guest) => guest.status === "Não confirmado").length} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
+      <section className="rounded-xl border border-border bg-card p-5 sm:p-6"><SectionHeading eyebrow="Lista de convidados" title="Como está a confirmação" action="Abrir lista" onClick={() => onView("guests")} /><div className="mt-7 flex items-center gap-7"><div className="relative grid size-36 place-items-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${Math.max(3, (confirmed / totalGuests) * 100)}%, var(--muted) 0)` }}><div className="grid size-[114px] place-items-center rounded-full bg-card"><div className="text-center"><div className="font-serif text-3xl">{Math.round((confirmed / totalGuests) * 100)}%</div><div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">confirmados</div></div></div></div><div className="space-y-3 text-xs"><Legend color="bg-primary" label="Confirmados" value={confirmed} /><Legend color="bg-accent" label="Aguardando" value={waiting} /><Legend color="bg-destructive/60" label="Declinados" value={declined} /><Legend color="bg-muted-foreground/30" label="Não confirmados" value={notConfirmed} /></div></div><div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">A lista original foi importada com <span className="font-semibold text-foreground">123 nomes</span>. Os grupos familiares podem ser completados quando você tiver certeza.</div></section>
     </div>
 
     <div className={`grid gap-6 ${canFinance ? "xl:grid-cols-[0.8fr_1.2fr]" : ""}`}>
@@ -807,10 +809,11 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
   const stats = [
     { label: "Confirmados", value: guests.filter((guest) => guest.status === "Confirmado").length },
     { label: "Aguardando", value: guests.filter((guest) => guest.status === "Aguardando").length },
-    { label: "Declinados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Declinados", value: guests.filter((guest) => guest.status === "Declinado").length },
+    { label: "Não confirmados", value: guests.filter((guest) => guest.status === "Não confirmado").length },
     { label: "Crianças até 10 anos", value: guests.filter((guest) => guest.child).length },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado").length },
+    { label: "Saldo de convites", value: allGuests.length - allGuests.filter((guest) => guest.child).length - allGuests.filter((guest) => guest.status === "Não confirmado" || guest.status === "Declinado").length },
   ];
 
   return (
@@ -1098,10 +1101,11 @@ function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: n
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-border bg-muted text-muted-foreground"}`}
+      className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : guest.status === "Declinado" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted text-muted-foreground"}`}
     >
       <option>Confirmado</option>
       <option>Aguardando</option>
+      <option>Declinado</option>
       <option>Não confirmado</option>
     </select>
   );
