@@ -15,7 +15,8 @@ async function resolveRecipients({ eventId, roles = [], userIds = [] }: PushAudi
     .eq("event_id", eventId);
   const set = new Set<string>();
   for (const member of members ?? []) {
-    if (roles.includes(member.role as EventRole) || userIds.includes(member.user_id)) set.add(member.user_id);
+    if (roles.includes(member.role as EventRole) || userIds.includes(member.user_id))
+      set.add(member.user_id);
   }
   return [...set];
 }
@@ -32,12 +33,12 @@ export async function deliverPush(
 
   const recipients = await resolveRecipients(meta);
   const subs = recipients.length
-    ? (
+    ? ((
         await supabaseAdmin
           .from("push_subscriptions")
           .select("id, endpoint, p256dh, auth, user_id, event_id")
           .in("user_id", recipients)
-      ).data?.filter((row) => row.event_id === null || row.event_id === meta.eventId) ?? []
+      ).data?.filter((row) => row.event_id === null || row.event_id === meta.eventId) ?? [])
     : [];
   let delivered = 0;
 
@@ -48,7 +49,11 @@ export async function deliverPush(
       keys: { p256dh: row.p256dh, auth: row.auth },
     };
     try {
-      const request = await buildPushPayload({ data: JSON.stringify(payload), options: { ttl: 3600 } }, subscription, vapid);
+      const request = await buildPushPayload(
+        { data: JSON.stringify(payload), options: { ttl: 3600 } },
+        subscription,
+        vapid,
+      );
       const response = await fetch(row.endpoint, request as unknown as RequestInit);
       if (response.ok) {
         delivered += 1;
@@ -79,21 +84,34 @@ export async function deliverPush(
 }
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
-const inDaysISO = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+const inDaysISO = (days: number) =>
+  new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
 export async function buildDigest(eventId: string): Promise<PushPayload | null> {
   const today = todayISO();
   const soon = inDaysISO(3);
 
   const [tasksRes, installmentsRes] = await Promise.all([
-    supabaseAdmin.from("tasks").select("name, due, status").eq("event_id", eventId).neq("status", "Concluído"),
-    supabaseAdmin.from("installments").select("label, due, amount, paid").eq("event_id", eventId).eq("paid", false),
+    supabaseAdmin
+      .from("tasks")
+      .select("name, due, status")
+      .eq("event_id", eventId)
+      .neq("status", "Concluído"),
+    supabaseAdmin
+      .from("installments")
+      .select("label, due, amount, paid")
+      .eq("event_id", eventId)
+      .eq("paid", false),
   ]);
 
   const lateTasks = (tasksRes.data ?? []).filter((task) => task.due && task.due < today);
-  const dueTasks = (tasksRes.data ?? []).filter((task) => task.due && task.due >= today && task.due <= soon);
+  const dueTasks = (tasksRes.data ?? []).filter(
+    (task) => task.due && task.due >= today && task.due <= soon,
+  );
   const lateParcels = (installmentsRes.data ?? []).filter((item) => item.due && item.due < today);
-  const dueParcels = (installmentsRes.data ?? []).filter((item) => item.due && item.due >= today && item.due <= soon);
+  const dueParcels = (installmentsRes.data ?? []).filter(
+    (item) => item.due && item.due >= today && item.due <= soon,
+  );
 
   const parts: string[] = [];
   if (lateTasks.length) parts.push(`${lateTasks.length} tarefa(s) atrasada(s)`);
@@ -108,7 +126,10 @@ export async function buildDigest(eventId: string): Promise<PushPayload | null> 
 export async function buildPendingReport(eventId: string): Promise<PushPayload | null> {
   const today = todayISO();
   const [guestsRes, familiesRes] = await Promise.all([
-    supabaseAdmin.from("guests").select("name, status, family_id, rsvp_deadline").eq("event_id", eventId),
+    supabaseAdmin
+      .from("guests")
+      .select("name, status, family_id, rsvp_deadline")
+      .eq("event_id", eventId),
     supabaseAdmin.from("families").select("id, name, rsvp_deadline").eq("event_id", eventId),
   ]);
 
@@ -118,7 +139,8 @@ export async function buildPendingReport(eventId: string): Promise<PushPayload |
   if (waiting.length === 0) return null;
 
   const deadlineOf = (guest: (typeof waiting)[number]) =>
-    guest.rsvp_deadline || (guest.family_id ? families.get(guest.family_id)?.rsvp_deadline ?? "" : "");
+    guest.rsvp_deadline ||
+    (guest.family_id ? (families.get(guest.family_id)?.rsvp_deadline ?? "") : "");
 
   const late = waiting.filter((guest) => {
     const deadline = deadlineOf(guest);
@@ -127,7 +149,9 @@ export async function buildPendingReport(eventId: string): Promise<PushPayload |
 
   const byGroup = new Map<string, number>();
   for (const guest of late) {
-    const label = guest.family_id ? families.get(guest.family_id)?.name ?? guest.name : guest.name;
+    const label = guest.family_id
+      ? (families.get(guest.family_id)?.name ?? guest.name)
+      : guest.name;
     byGroup.set(label, (byGroup.get(label) ?? 0) + 1);
   }
   const top = [...byGroup.entries()]

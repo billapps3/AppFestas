@@ -53,7 +53,12 @@ function urlBase64ToUint8Array(base64: string) {
 }
 
 const bufferToBase64 = (buffer: ArrayBuffer | null) =>
-  buffer ? btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : "";
+  buffer
+    ? btoa(String.fromCharCode(...new Uint8Array(buffer)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "")
+    : "";
 
 export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: string }) {
   const [supported, setSupported] = useState(false);
@@ -80,7 +85,8 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
   }, [eventId]);
 
   useEffect(() => {
-    const ok = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
+    const ok =
+      typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
     setSupported(ok);
     if (!ok) return;
     void navigator.serviceWorker.getRegistration("/push-sw.js").then(async (registration) => {
@@ -92,27 +98,37 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
 
   useEffect(() => {
     if (!isAdmin || !eventId) return;
-    void listEventMembersForPush({ data: { eventId } }).then(setMembers).catch(() => undefined);
+    void listEventMembersForPush({ data: { eventId } })
+      .then(setMembers)
+      .catch(() => undefined);
     void getNotificationSettings({ data: { eventId } })
       .then((rows) => {
         if (rows.length) {
-          setSettings(defaultSettings.map((item) => rows.find((row) => row.kind === item.kind) ?? item));
+          setSettings(
+            defaultSettings.map((item) => rows.find((row) => row.kind === item.kind) ?? item),
+          );
         }
       })
       .catch(() => undefined);
   }, [isAdmin, eventId]);
 
   const toggleRole = (role: EventRole) =>
-    setRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
+    setRoles((current) =>
+      current.includes(role) ? current.filter((item) => item !== role) : [...current, role],
+    );
 
   const togglePerson = (userId: string) =>
-    setPeople((current) => (current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]));
+    setPeople((current) =>
+      current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId],
+    );
 
   const saveSetting = async (kind: AutoKind, patch: Partial<Setting>) => {
     const next = settings.map((item) => (item.kind === kind ? { ...item, ...patch } : item));
     setSettings(next);
     const target = next.find((item) => item.kind === kind)!;
-    await updateNotificationSettings({ data: { eventId, kind, enabled: target.enabled, roles: target.roles } }).catch(() => undefined);
+    await updateNotificationSettings({
+      data: { eventId, kind, enabled: target.enabled, roles: target.roles },
+    }).catch(() => undefined);
   };
 
   const enable = async () => {
@@ -127,7 +143,10 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
       await navigator.serviceWorker.ready;
       const subscription =
         (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }));
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        }));
       await savePushSubscription({
         data: {
           endpoint: subscription.endpoint,
@@ -166,7 +185,9 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
     setBusy(true);
     setFeedback("");
     try {
-      const result = await sendPushMessage({ data: { eventId, title, body, audienceRoles: roles, audienceUserIds: people } });
+      const result = await sendPushMessage({
+        data: { eventId, title, body, audienceRoles: roles, audienceUserIds: people },
+      });
       setTitle("");
       setBody("");
       setFeedback(`Enviado para ${result.delivered} de ${result.total} aparelho(s).`);
@@ -183,13 +204,27 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold">Central de avisos</h2>
-          <p className="text-xs text-muted-foreground">Notificações no celular para a equipe do evento.</p>
+          <p className="text-xs text-muted-foreground">
+            Notificações no celular para a equipe do evento.
+          </p>
         </div>
         {supported ? (
           enabled ? (
-            <Button size="sm" variant="outline" className="gap-1.5" disabled={busy} onClick={() => void disable()}><BellOff className="size-3.5" />Desativar aqui</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              disabled={busy}
+              onClick={() => void disable()}
+            >
+              <BellOff className="size-3.5" />
+              Desativar aqui
+            </Button>
           ) : (
-            <Button size="sm" className="gap-1.5" disabled={busy} onClick={() => void enable()}><Bell className="size-3.5" />Ativar neste aparelho</Button>
+            <Button size="sm" className="gap-1.5" disabled={busy} onClick={() => void enable()}>
+              <Bell className="size-3.5" />
+              Ativar neste aparelho
+            </Button>
           )
         ) : (
           <span className="text-xs text-muted-foreground">Navegador sem suporte a avisos.</span>
@@ -199,7 +234,13 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
       {isAdmin && (
         <div className="mt-3 border-t border-border pt-3">
           <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/50 p-1 text-[11px] font-medium">
-            {([["send", "Enviar aviso"], ["auto", "Automáticos"], ["history", "Histórico"]] as const).map(([id, label]) => (
+            {(
+              [
+                ["send", "Enviar aviso"],
+                ["auto", "Automáticos"],
+                ["history", "Histórico"],
+              ] as const
+            ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
@@ -214,12 +255,26 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
           {tab === "send" && (
             <div className="mt-3 space-y-3">
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título do aviso" className="h-9 text-xs" maxLength={80} />
-                <Input value={body} onChange={(event) => setBody(event.target.value)} placeholder="Mensagem" className="h-9 text-xs" maxLength={300} />
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Título do aviso"
+                  className="h-9 text-xs"
+                  maxLength={80}
+                />
+                <Input
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  placeholder="Mensagem"
+                  className="h-9 text-xs"
+                  maxLength={300}
+                />
               </div>
 
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Enviar para os papéis</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Enviar para os papéis
+                </div>
                 <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
                   {ALL_ROLES.map((role) => (
                     <button
@@ -236,13 +291,25 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
 
               {members.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pessoas específicas</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Pessoas específicas
+                  </div>
                   <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                     {members.map((member) => (
-                      <label key={member.userId} className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-[11px]">
-                        <input type="checkbox" checked={people.includes(member.userId)} onChange={() => togglePerson(member.userId)} className="size-3.5 accent-primary" />
+                      <label
+                        key={member.userId}
+                        className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-[11px]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={people.includes(member.userId)}
+                          onChange={() => togglePerson(member.userId)}
+                          className="size-3.5 accent-primary"
+                        />
                         <span className="min-w-0 truncate">{member.name}</span>
-                        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{eventRoleLabel[member.role]}</span>
+                        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                          {eventRoleLabel[member.role]}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -252,10 +319,16 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
               <Button
                 size="sm"
                 className="h-9 w-full gap-1.5 text-xs sm:w-auto"
-                disabled={busy || !title.trim() || !body.trim() || (roles.length === 0 && people.length === 0)}
+                disabled={
+                  busy ||
+                  !title.trim() ||
+                  !body.trim() ||
+                  (roles.length === 0 && people.length === 0)
+                }
                 onClick={() => void send()}
               >
-                <Send className="size-3.5" />Enviar aviso
+                <Send className="size-3.5" />
+                Enviar aviso
               </Button>
             </div>
           )}
@@ -265,7 +338,14 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
               {settings.map((setting) => (
                 <div key={setting.kind} className="rounded-lg border border-border p-2.5">
                   <label className="flex items-center gap-2 text-xs font-medium">
-                    <input type="checkbox" checked={setting.enabled} onChange={(event) => void saveSetting(setting.kind, { enabled: event.target.checked })} className="size-3.5 accent-primary" />
+                    <input
+                      type="checkbox"
+                      checked={setting.enabled}
+                      onChange={(event) =>
+                        void saveSetting(setting.kind, { enabled: event.target.checked })
+                      }
+                      className="size-3.5 accent-primary"
+                    />
                     {autoLabel[setting.kind]}
                   </label>
                   <div className="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
@@ -275,7 +355,13 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
                         <button
                           key={role}
                           type="button"
-                          onClick={() => void saveSetting(setting.kind, { roles: active ? setting.roles.filter((item) => item !== role) : [...setting.roles, role] })}
+                          onClick={() =>
+                            void saveSetting(setting.kind, {
+                              roles: active
+                                ? setting.roles.filter((item) => item !== role)
+                                : [...setting.roles, role],
+                            })
+                          }
                           className={`rounded-full border px-2.5 py-1 text-[11px] ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                         >
                           {eventRoleLabel[role]}
@@ -285,7 +371,9 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
                   </div>
                 </div>
               ))}
-              <p className="text-[11px] text-muted-foreground">O relatório de pendentes é enviado uma vez por dia no horário do resumo.</p>
+              <p className="text-[11px] text-muted-foreground">
+                O relatório de pendentes é enviado uma vez por dia no horário do resumo.
+              </p>
             </div>
           )}
         </div>
@@ -296,10 +384,18 @@ export function PushPanel({ isAdmin, eventId }: { isAdmin: boolean; eventId: str
       {(!isAdmin || tab === "history") && messages.length > 0 && (
         <ul className="mt-3 space-y-1.5">
           {messages.map((message) => (
-            <li key={message.id} className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px]">
+            <li
+              key={message.id}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px]"
+            >
               <span className="font-medium">{message.title}</span> · {message.body}
               <span className="ml-1 text-muted-foreground">
-                ({kindLabel[message.kind] ?? message.kind} · {(message.audience_roles ?? []).map((role) => eventRoleLabel[role as EventRole] ?? role).join(", ") || "pessoas escolhidas"} · {message.delivered} entrega(s) · {new Date(message.created_at).toLocaleDateString("pt-BR")})
+                ({kindLabel[message.kind] ?? message.kind} ·{" "}
+                {(message.audience_roles ?? [])
+                  .map((role) => eventRoleLabel[role as EventRole] ?? role)
+                  .join(", ") || "pessoas escolhidas"}{" "}
+                · {message.delivered} entrega(s) ·{" "}
+                {new Date(message.created_at).toLocaleDateString("pt-BR")})
               </span>
             </li>
           ))}

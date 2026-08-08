@@ -6,15 +6,22 @@ const ROLES: Role[] = ["owner", "organizer", "planner", "rsvp", "celebrant", "vi
 type AutoKind = "task_done" | "rsvp" | "pending_report";
 
 type AuthedClient = {
-  rpc: (fn: "has_event_role", args: { _event: string; _roles: Role[] }) => PromiseLike<{ data: unknown }>;
+  rpc: (
+    fn: "has_event_role",
+    args: { _event: string; _roles: Role[] },
+  ) => PromiseLike<{ data: unknown }>;
 };
 
 async function assertManager(client: AuthedClient, eventId: string) {
-  const { data } = await client.rpc("has_event_role", { _event: eventId, _roles: ["owner", "organizer"] });
+  const { data } = await client.rpc("has_event_role", {
+    _event: eventId,
+    _roles: ["owner", "organizer"],
+  });
   if (data !== true) throw new Error("Sem permissão para enviar avisos neste evento");
 }
 
-const sanitizeRoles = (roles?: string[]) => (roles ?? []).filter((role): role is Role => ROLES.includes(role as Role));
+const sanitizeRoles = (roles?: string[]) =>
+  (roles ?? []).filter((role): role is Role => ROLES.includes(role as Role));
 
 export const getPushPublicKey = createServerFn({ method: "GET" }).handler(async () => ({
   publicKey: process.env["VAPID_PUBLIC_KEY"] ?? "",
@@ -22,10 +29,18 @@ export const getPushPublicKey = createServerFn({ method: "GET" }).handler(async 
 
 export const savePushSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { endpoint: string; p256dh: string; auth: string; label?: string; eventId?: string }) => {
-    if (!data?.endpoint || !data.p256dh || !data.auth) throw new Error("Inscrição inválida");
-    return data;
-  })
+  .inputValidator(
+    (data: {
+      endpoint: string;
+      p256dh: string;
+      auth: string;
+      label?: string;
+      eventId?: string;
+    }) => {
+      if (!data?.endpoint || !data.p256dh || !data.auth) throw new Error("Inscrição inválida");
+      return data;
+    },
+  )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("push_subscriptions").upsert(
       {
@@ -52,23 +67,40 @@ export const removePushSubscription = createServerFn({ method: "POST" })
 
 export const sendPushMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { eventId: string; title: string; body: string; url?: string; audienceRoles?: string[]; audienceUserIds?: string[] }) => {
-    const title = (data?.title ?? "").trim();
-    const body = (data?.body ?? "").trim();
-    if (!data?.eventId) throw new Error("Evento inválido");
-    if (!title || title.length > 80) throw new Error("Título obrigatório (até 80 caracteres)");
-    if (!body || body.length > 300) throw new Error("Mensagem obrigatória (até 300 caracteres)");
-    const roles = sanitizeRoles(data.audienceRoles);
-    const userIds = (data.audienceUserIds ?? []).slice(0, 200);
-    if (roles.length === 0 && userIds.length === 0) throw new Error("Escolha ao menos um destinatário");
-    return { eventId: data.eventId, title, body, url: data.url?.slice(0, 200), roles, userIds };
-  })
+  .inputValidator(
+    (data: {
+      eventId: string;
+      title: string;
+      body: string;
+      url?: string;
+      audienceRoles?: string[];
+      audienceUserIds?: string[];
+    }) => {
+      const title = (data?.title ?? "").trim();
+      const body = (data?.body ?? "").trim();
+      if (!data?.eventId) throw new Error("Evento inválido");
+      if (!title || title.length > 80) throw new Error("Título obrigatório (até 80 caracteres)");
+      if (!body || body.length > 300) throw new Error("Mensagem obrigatória (até 300 caracteres)");
+      const roles = sanitizeRoles(data.audienceRoles);
+      const userIds = (data.audienceUserIds ?? []).slice(0, 200);
+      if (roles.length === 0 && userIds.length === 0)
+        throw new Error("Escolha ao menos um destinatário");
+      return { eventId: data.eventId, title, body, url: data.url?.slice(0, 200), roles, userIds };
+    },
+  )
   .handler(async ({ data, context }) => {
     await assertManager(context.supabase, data.eventId);
     const { deliverPush } = await import("@/lib/push.server");
     return deliverPush(
       { title: data.title, body: data.body, url: data.url },
-      { sentBy: context.userId, automatic: false, kind: "manual", eventId: data.eventId, roles: data.roles, userIds: data.userIds },
+      {
+        sentBy: context.userId,
+        automatic: false,
+        kind: "manual",
+        eventId: data.eventId,
+        roles: data.roles,
+        userIds: data.userIds,
+      },
     );
   });
 
@@ -115,21 +147,38 @@ export const getNotificationSettings = createServerFn({ method: "POST" })
 
 export const updateNotificationSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { eventId: string; kind: AutoKind; enabled: boolean; roles: string[] }) => {
-    if (!data?.eventId) throw new Error("Evento inválido");
-    if (!["task_done", "rsvp", "pending_report"].includes(data.kind)) throw new Error("Tipo de aviso inválido");
-    return { eventId: data.eventId, kind: data.kind, enabled: Boolean(data.enabled), roles: sanitizeRoles(data.roles) };
-  })
+  .inputValidator(
+    (data: { eventId: string; kind: AutoKind; enabled: boolean; roles: string[] }) => {
+      if (!data?.eventId) throw new Error("Evento inválido");
+      if (!["task_done", "rsvp", "pending_report"].includes(data.kind))
+        throw new Error("Tipo de aviso inválido");
+      return {
+        eventId: data.eventId,
+        kind: data.kind,
+        enabled: Boolean(data.enabled),
+        roles: sanitizeRoles(data.roles),
+      };
+    },
+  )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("notification_settings").upsert(
-      { event_id: data.eventId, kind: data.kind, enabled: data.enabled, audience_roles: data.roles },
+      {
+        event_id: data.eventId,
+        kind: data.kind,
+        enabled: data.enabled,
+        audience_roles: data.roles,
+      },
       { onConflict: "event_id,kind" },
     );
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-async function automaticAudience(client: { from: (table: "notification_settings") => any }, eventId: string, kind: AutoKind) {
+async function automaticAudience(
+  client: { from: (table: "notification_settings") => any },
+  eventId: string,
+  kind: AutoKind,
+) {
   const { data } = await client
     .from("notification_settings")
     .select("enabled, audience_roles")
@@ -150,7 +199,11 @@ export const notifyTaskDone = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const roles = await automaticAudience(context.supabase, data.eventId, "task_done");
     if (!roles) return { delivered: 0, total: 0, skipped: true };
-    const { data: profile } = await context.supabase.from("profiles").select("display_name").eq("id", context.userId).maybeSingle();
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", context.userId)
+      .maybeSingle();
     const actor = profile?.display_name ?? "Alguém";
     const { deliverPush } = await import("@/lib/push.server");
     return deliverPush(
@@ -161,21 +214,36 @@ export const notifyTaskDone = createServerFn({ method: "POST" })
 
 export const notifyGuestRsvp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { eventId: string; guestName: string; status: string; family?: string | undefined }) => {
-    if (!data?.eventId || !data?.guestName) throw new Error("Dados inválidos");
-    if (!["Confirmado", "Declinado"].includes(data.status)) throw new Error("Status sem aviso");
-    return { eventId: data.eventId, guestName: data.guestName.slice(0, 120), status: data.status, family: data.family?.slice(0, 80) };
-  })
+  .inputValidator(
+    (data: { eventId: string; guestName: string; status: string; family?: string | undefined }) => {
+      if (!data?.eventId || !data?.guestName) throw new Error("Dados inválidos");
+      if (!["Confirmado", "Declinado"].includes(data.status)) throw new Error("Status sem aviso");
+      return {
+        eventId: data.eventId,
+        guestName: data.guestName.slice(0, 120),
+        status: data.status,
+        family: data.family?.slice(0, 80),
+      };
+    },
+  )
   .handler(async ({ data, context }) => {
     const roles = await automaticAudience(context.supabase, data.eventId, "rsvp");
     if (!roles) return { delivered: 0, total: 0, skipped: true };
-    const { data: profile } = await context.supabase.from("profiles").select("display_name").eq("id", context.userId).maybeSingle();
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", context.userId)
+      .maybeSingle();
     const actor = profile?.display_name ?? "Alguém";
     const action = data.status === "Confirmado" ? "confirmou presença" : "declinou o convite";
     const family = data.family ? ` (família ${data.family})` : "";
     const { deliverPush } = await import("@/lib/push.server");
     return deliverPush(
-      { title: data.status === "Confirmado" ? "Presença confirmada" : "Convite declinado", body: `${data.guestName}${family} ${action} — registrado por ${actor}`, url: "/app" },
+      {
+        title: data.status === "Confirmado" ? "Presença confirmada" : "Convite declinado",
+        body: `${data.guestName}${family} ${action} — registrado por ${actor}`,
+        url: "/app",
+      },
       { sentBy: context.userId, automatic: true, kind: "rsvp", eventId: data.eventId, roles },
     );
   });
