@@ -944,7 +944,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
 
 function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }: { guest: Guest; isPrincipal?: boolean; inFamily?: boolean; families: string[]; onStatus: (id: number, status: GuestStatus) => void; onUpdate: (id: number, patch: Partial<Guest>) => void }) {
   return (
-    <div className="flex flex-col gap-3 p-4 transition hover:bg-muted/25 lg:flex-row lg:items-center lg:justify-between">
+    <div className="grid gap-3 p-4 transition hover:bg-muted/25 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${isPrincipal ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{guest.name.charAt(0)}</span>
         <div className="min-w-0">
@@ -958,15 +958,15 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap items-center gap-1">
+      <div className="grid grid-cols-2 items-center gap-2 lg:flex lg:justify-end">
+        <div className="col-span-2 flex flex-wrap items-center gap-1 lg:col-span-1 lg:shrink-0 lg:justify-end">
           {!inFamily && (
             <>
             <button
               onClick={() => onUpdate(guest.id, guest.virtual ? { virtual: false, virtualAt: "" } : { virtual: true, virtualAt: guest.virtualAt || todayISO() })}
               aria-pressed={guest.virtual}
               title={guest.virtual ? `Convite virtual enviado em ${formatBR(guest.virtualAt)}` : "Marcar convite virtual como enviado"}
-              className={`grid size-7 place-items-center rounded-md ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
+              className={`grid size-8 place-items-center rounded-md lg:size-7 ${guest.virtual ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/40"}`}
             ><Send className="size-3" /></button>
             {guest.virtual && (
               <label className="flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-1.5 py-1 text-[10px] text-primary">
@@ -994,14 +994,14 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
             </>
           )}
           {!guest.family && (
-            <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
+            <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-8 place-items-center rounded-md lg:size-7 ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
           )}
           <button
             onClick={() => { if (typeof guest.age === "number" && guest.age > 10) return; onUpdate(guest.id, { child: !guest.child }); }}
             aria-pressed={guest.child}
             disabled={typeof guest.age === "number" && guest.age > 10}
             title={typeof guest.age === "number" && guest.age > 10 ? `${guest.age} anos: convidado pagante` : "Criança até 10 anos (não pagante)"}
-            className={`grid size-7 place-items-center rounded-md disabled:opacity-40 ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}
+            className={`grid size-8 place-items-center rounded-md disabled:opacity-40 lg:size-7 ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}
           ><Baby className="size-3" /></button>
         </div>
 
@@ -1009,7 +1009,7 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
           aria-label={`Família de ${guest.name}`}
           value={guest.family}
           onChange={(event) => onUpdate(guest.id, { family: event.target.value === "__self" ? guest.name : event.target.value })}
-          className="max-w-[190px] rounded-md border border-border bg-background px-2 py-1.5 text-[11px] outline-none"
+          className="min-w-0 truncate rounded-md border border-border bg-background px-2 py-1.5 text-[11px] outline-none lg:w-[190px] lg:shrink-0"
         >
           <option value="">Sem família</option>
           <option value="__self">Tornar principal de família</option>
@@ -1020,13 +1020,15 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
           aria-label={`Responsável por ${guest.name}`}
           value={guest.host}
           onChange={(event) => onUpdate(guest.id, { host: event.target.value })}
-          className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.host ? "border-border bg-background" : "border-dashed border-primary/50 bg-primary/5 text-primary"}`}
+          className={`min-w-0 truncate rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[150px] lg:shrink-0 ${guest.host ? "border-border bg-background" : "border-dashed border-primary/50 bg-primary/5 text-primary"}`}
         >
           <option value="">Escolher responsável</option>
           {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
         </select>
 
-        <GuestStatusSelect guest={guest} onStatus={onStatus} />
+        <div className="col-span-2 lg:col-span-1 lg:shrink-0">
+          <GuestStatusSelect guest={guest} onStatus={onStatus} />
+        </div>
       </div>
     </div>
   );
@@ -1114,7 +1116,7 @@ function GuestStatusSelect({ guest, onStatus }: { guest: Guest; onStatus: (id: n
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-       className={`rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+       className={`w-full rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[130px] ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
      >
        <option>Confirmado</option>
        <option>Aguardando</option>
