@@ -400,7 +400,9 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
   const declined = guests.filter((guest) => guest.status === "Declinado").length;
   const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
   const children = guests.filter((guest) => guest.child).length;
-  const inviteBalance = totalGuests - children - declined;
+  // uma pessoa nunca é descontada duas vezes (criança que também declinou)
+  const nonPaying = guests.filter((guest) => guest.child || guest.status === "Declinado").length;
+  const inviteBalance = totalGuests - nonPaying;
 
   const expenses = useExpenses();
   const suppliers = useSuppliers();
@@ -455,7 +457,7 @@ function Overview({ daysLeft, completedTasks, confirmedGuests, totalGuests, virt
           { label: "Aguardando", value: waiting, hint: "sem resposta" },
           { label: "Declinados", value: declined, hint: "avisaram que não vão" },
           { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
-          { label: "Saldo de convites", value: inviteBalance, hint: "total − crianças − declinados" },
+          { label: "Saldo de convites (pagantes)", value: inviteBalance, hint: `${totalGuests} − ${children} crianças − ${declined} declinados` },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-border bg-background p-4">
             <div className="text-[11px] leading-tight text-muted-foreground">{item.label}</div>
@@ -818,7 +820,7 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
     { label: "Declinados", value: declined },
     { label: "Crianças até 10 anos", value: children },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
-    { label: "Saldo de convites", value: allGuests.length - children - declined },
+    { label: "Saldo de convites (pagantes)", value: allGuests.length - allGuests.filter((guest) => guest.child || guest.status === "Declinado").length },
   ];
 
   return (
@@ -994,7 +996,13 @@ function GuestRow({ guest, isPrincipal, inFamily, families, onStatus, onUpdate }
           {!guest.family && (
             <button onClick={() => onUpdate(guest.id, { physical: !guest.physical })} title="Convite físico" className={`grid size-7 place-items-center rounded-md ${guest.physical ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground/40"}`}><Gift className="size-3" /></button>
           )}
-          <button onClick={() => onUpdate(guest.id, { child: !guest.child })} aria-pressed={guest.child} title="Criança até 10 anos (não pagante)" className={`grid size-7 place-items-center rounded-md ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}><Baby className="size-3" /></button>
+          <button
+            onClick={() => { if (typeof guest.age === "number" && guest.age > 10) return; onUpdate(guest.id, { child: !guest.child }); }}
+            aria-pressed={guest.child}
+            disabled={typeof guest.age === "number" && guest.age > 10}
+            title={typeof guest.age === "number" && guest.age > 10 ? `${guest.age} anos: convidado pagante` : "Criança até 10 anos (não pagante)"}
+            className={`grid size-7 place-items-center rounded-md disabled:opacity-40 ${guest.child ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}
+          ><Baby className="size-3" /></button>
         </div>
 
         <select
