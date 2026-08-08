@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { activeEventId } from "@/lib/active-event";
 
 export type Installment = {
   id: string;
@@ -53,7 +54,7 @@ export function useInstallments() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("installments").select("*").order("seq", { ascending: true });
+    const { data } = await supabase.from("installments").select("*").eq("event_id", activeEventId()).order("seq", { ascending: true });
     setItems((data ?? []).map(mapRow));
     setLoading(false);
   }, []);

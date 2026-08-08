@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { PushPanel } from "@/components/push-panel";
-import { AccessPanel } from "@/components/access-panel";
+import { TeamPanel } from "@/components/team-panel";
+import { useEventAccess, eventRoleLabel } from "@/lib/event-access";
+import { acceptMyInvites } from "@/lib/team.functions";
 import { loadFamilyInvites, loadMirellaState, saveFamilyInvite, saveMirellaState, type FamilyInvite } from "@/lib/mirella-store";
 import { expenseStatuses, supplierStatuses, useExpenses, useSuppliers, type Expense, type Supplier } from "@/lib/mirella-finance";
 import { useInstallments } from "@/lib/mirella-installments";
@@ -32,6 +34,7 @@ import {
   Plus,
   Search,
   Send,
+  ShieldCheck,
   Sparkles,
   Store,
   Trash2,
@@ -60,44 +63,32 @@ export const Route = createFileRoute("/")({
 
 function useSessionProfile() {
   const navigate = useNavigate();
-  const [state, setState] = useState<{ ready: boolean; name: string | null; isAdmin: boolean; canFinance: boolean }>({ ready: false, name: null, isAdmin: false, canFinance: false });
+  const access = useEventAccess();
+  const [invitesChecked, setInvitesChecked] = useState(false);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      if (!data.session) {
-        navigate({ to: "/auth", replace: true });
-        setState({ ready: false, name: null, isAdmin: false, canFinance: false });
-        return;
-      }
-      const [{ data: profile }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("display_name, can_finance").eq("id", data.session.user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", data.session.user.id),
-      ]);
-      if (!active) return;
-      const list = (roles ?? []).map((row) => row.role as string);
-      const isAdmin = list.includes("admin");
-      setState({
-        ready: true,
-        name: profile?.display_name ?? data.session.user.email ?? "Perfil",
-        isAdmin,
-        canFinance: isAdmin || (!list.includes("aniversariante") && (profile?.can_finance ?? true)),
-      });
-    };
-    void load();
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active && !data.session) navigate({ to: "/auth", replace: true });
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") navigate({ to: "/auth", replace: true });
-      if (event === "SIGNED_IN") void load();
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, [navigate]);
 
-  return state;
+  useEffect(() => {
+    if (!access.userId || invitesChecked) return;
+    setInvitesChecked(true);
+    void acceptMyInvites()
+      .then((result) => { if (result.joined > 0) void access.reload(); })
+      .catch(() => undefined);
+  }, [access, invitesChecked]);
+
+  return access;
 }
 
-type View = "overview" | "tasks" | "guests" | "suppliers" | "finance";
+type View = "overview" | "tasks" | "guests" | "suppliers" | "finance" | "team";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
 type GuestStatus = "Confirmado" | "Aguardando" | "Não confirmado";
 
@@ -169,6 +160,7 @@ const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "guests", label: "Convidados", icon: Users },
   { id: "suppliers", label: "Fornecedores", icon: Store },
   { id: "finance", label: "Financeiro", icon: WalletCards },
+  { id: "team", label: "Equipe", icon: ShieldCheck },
 ];
 
 function money(value: number) {
@@ -302,8 +294,28 @@ function FestaApp() {
     setMenuOpen(false);
   };
 
+  const visibleNav = navItems.filter((item) => {
+    if (item.id === "suppliers" || item.id === "finance") return session.can.finance;
+    if (item.id === "tasks") return session.can.tasks;
+    if (item.id === "team") return session.can.team;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!session.ready) return;
+    if (session.role === "rsvp" && view !== "guests") setView("guests");
+  }, [session.ready, session.role, view]);
+
   if (!session.ready) {
     return <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">Carregando o painel…</div>;
+  }
+
+  if (!session.activeEventId) {
+    return (
+      <div className="grid min-h-svh place-items-center px-6 text-center text-sm text-muted-foreground">
+        Sua conta ainda não faz parte de nenhum evento. Peça para quem organiza convidar o seu e-mail{session.email ? ` (${session.email})` : ""}.
+      </div>
+    );
   }
 
   return (
@@ -322,7 +334,7 @@ function FestaApp() {
 
         <div className="mt-10 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/45">Organização</div>
         <nav className="mt-3 space-y-1">
-          {navItems.filter((item) => session.canFinance || (item.id !== "suppliers" && item.id !== "finance")).map(({ id, label, icon: Icon }) => (
+          {visibleNav.map(({ id, label, icon: Icon }) => (
             <Button key={id} variant="ghost" onClick={() => selectView(id)} className={`w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-[13px] ${view === id ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm" : "text-sidebar-foreground/65 hover:text-sidebar-foreground"}`}>
               <Icon className="size-[17px]" />{label}
               {id === "tasks" && <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{tasks.length - completedTasks}</span>}
@@ -335,13 +347,21 @@ function FestaApp() {
           <div className="mt-3 font-serif text-[22px] text-sidebar-foreground">02 outubro 2026</div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-sidebar-foreground/50"><Clock3 className="size-3.5" />Faltam {daysLeft} dias</div>
         </div>
-        <div className="mt-4 flex items-center gap-3 px-2"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span><div className="min-w-0"><div className="truncate text-xs font-medium text-sidebar-foreground">{session.name}</div><div className="text-[11px] text-sidebar-foreground/45">Painel da festa</div></div><MoreHorizontal className="ml-auto size-4 text-sidebar-foreground/40" /></div>
+        <div className="mt-4 flex items-center gap-3 px-2"><span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span><div className="min-w-0"><div className="truncate text-xs font-medium text-sidebar-foreground">{session.name}</div><div className="text-[11px] text-sidebar-foreground/45">{session.role ? eventRoleLabel[session.role] : "Painel da festa"}</div></div><MoreHorizontal className="ml-auto size-4 text-sidebar-foreground/40" /></div>
       </aside>
 
       <div className="lg:pl-[252px]">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/90 backdrop-blur-md">
           <div className="flex h-[72px] items-center justify-between px-5 sm:px-8 lg:px-10">
-            <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div><div className="text-[11px] font-medium text-muted-foreground">Sexta-feira, 06 de agosto de 2026</div><div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? `Olá, ${(session.name ?? "").split(" ")[0] || "família"}` : navItems.find((item) => item.id === view)?.label}</div></div></div>
+            <div className="flex items-center gap-3"><Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></Button><div>
+              {session.events.length > 1 ? (
+                <select className="h-6 rounded-md border border-input bg-card px-1.5 text-[11px] font-medium" value={session.activeEventId} onChange={(event) => session.setActiveEventId(event.target.value)} aria-label="Evento ativo">
+                  {session.events.map((item) => (<option key={item.id} value={item.id}>{item.name}</option>))}
+                </select>
+              ) : (
+                <div className="text-[11px] font-medium text-muted-foreground">{session.activeEvent?.name ?? "Evento"}</div>
+              )}
+              <div className="mt-0.5 font-serif text-[21px]">{view === "overview" ? `Olá, ${(session.name ?? "").split(" ")[0] || "família"}` : navItems.find((item) => item.id === view)?.label}</div></div></div>
             <div className="flex items-center gap-2 sm:gap-4"><span className="hidden text-xs text-muted-foreground sm:inline">{saveState === "saving" ? "Salvando…" : saveState === "saved" ? "Salvo na nuvem" : saveState === "error" ? "Erro ao salvar" : ""}</span><Button variant="ghost" size="icon" aria-label="Notificações" className="relative"><Bell /><span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /></Button><div className="hidden h-7 w-px bg-border sm:block" /><Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex"><Download />Exportar</Button><span className="hidden text-xs font-medium sm:inline">{session.name}</span><Button variant="ghost" size="sm" className="text-xs" onClick={() => { void supabase.auth.signOut(); }}>Sair</Button><span className="grid size-9 place-items-center rounded-full bg-secondary font-serif text-lg text-secondary-foreground">{(session.name ?? "M").charAt(0).toUpperCase()}</span></div>
           </div>
         </header>
@@ -349,18 +369,18 @@ function FestaApp() {
         <main className="mx-auto max-w-[1440px] px-5 pb-12 pt-7 sm:px-8 lg:px-10">
           {view === "overview" && (
             <div className="space-y-6">
-              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} canFinance={session.canFinance} />
-              <PushPanel isAdmin={session.isAdmin} />
-              <AccessPanel isAdmin={session.isAdmin} />
+              <Overview daysLeft={daysLeft} completedTasks={completedTasks} confirmedGuests={confirmedGuests} totalGuests={guests.length} virtualSent={virtualSent} tasks={tasks} guests={guests} rsvpPending={rsvpPending} onTaskStatus={changeTaskStatus} onView={selectView} canFinance={session.can.finance} />
+              <PushPanel isAdmin={session.can.team} />
             </div>
           )}
-          {view === "tasks" && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
+          {view === "tasks" && session.can.tasks && <TasksView tasks={tasks} onTaskStatus={changeTaskStatus} onAdd={addTask} onUpdate={updateTask} onDelete={deleteTask} />}
           {view === "guests" && <GuestsView guests={filteredGuests} allGuests={guests} search={search} setSearch={setSearch} hostFilter={hostFilter} setHostFilter={setHostFilter} showForm={showGuestForm} setShowForm={setShowGuestForm} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} onStatus={changeGuestStatus} onUpdate={updateGuest} onFamilyHost={setFamilyHost} familyInvites={familyInvites} onFamilyPhysical={setFamilyPhysical} />}
-          {view === "suppliers" && session.canFinance && <SuppliersView />}
-          {view === "finance" && session.canFinance && <FinanceView />}
-          {(view === "suppliers" || view === "finance") && !session.canFinance && (
+          {view === "team" && session.can.team && <TeamPanel eventId={session.activeEventId} canManage={session.can.team} currentUserId={session.userId} />}
+          {view === "suppliers" && session.can.finance && <SuppliersView />}
+          {view === "finance" && session.can.finance && <FinanceView />}
+          {((view === "suppliers" || view === "finance") && !session.can.finance) || (view === "tasks" && !session.can.tasks) || (view === "team" && !session.can.team) ? (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Este módulo não está disponível no seu perfil.</div>
-          )}
+          ) : null}
         </main>
       </div>
     </div>
