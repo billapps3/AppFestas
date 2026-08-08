@@ -81,6 +81,7 @@ export function useInstallments() {
       : items.filter((item) => item.expenseId === values.expenseId);
     const seq = siblings.reduce((max, item) => Math.max(max, item.seq), 0) + 1;
     await supabase.from("installments").insert({
+      event_id: activeEventId(),
       supplier_id: values.supplierId ?? null,
       expense_id: values.expenseId ?? null,
       seq,
@@ -100,6 +101,7 @@ export function useInstallments() {
     const rows = list.map((entry) => {
       seq += 1;
       return {
+        event_id: activeEventId(),
         supplier_id: parent.supplierId ?? null,
         expense_id: parent.expenseId ?? null,
         seq,
@@ -137,7 +139,7 @@ export function usePayers() {
   const [names, setNames] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("payers").select("name").order("name", { ascending: true });
+    const { data } = await supabase.from("payers").select("name").eq("event_id", activeEventId()).order("name", { ascending: true });
     setNames((data ?? []).map((row) => row.name));
   }, []);
 
@@ -146,7 +148,7 @@ export function usePayers() {
   const add = useCallback(async (name: string) => {
     const clean = name.trim();
     if (!clean) return;
-    await supabase.from("payers").upsert({ name: clean }, { onConflict: "name" });
+    await supabase.from("payers").upsert({ name: clean, event_id: activeEventId() }, { onConflict: "event_id,name" });
     await refresh();
   }, [refresh]);
 
