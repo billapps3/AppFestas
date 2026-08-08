@@ -35,11 +35,127 @@ export type Database = {
         }
         Relationships: []
       }
+      event_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          event_id: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["event_member_role"]
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          event_id: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["event_member_role"]
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          event_id?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["event_member_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_invites_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_members: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          role: Database["public"]["Enums"]["event_member_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["event_member_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["event_member_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_members_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          event_date: string | null
+          id: string
+          name: string
+          owner_id: string
+          plan: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          plan?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          plan?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           created_at: string
           description: string | null
           due: string | null
+          event_id: string
           id: string
           name: string
           paid: number
@@ -51,6 +167,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due?: string | null
+          event_id?: string
           id?: string
           name: string
           paid?: number
@@ -62,6 +179,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due?: string | null
+          event_id?: string
           id?: string
           name?: string
           paid?: number
@@ -69,11 +187,20 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       families: {
         Row: {
           created_at: string
+          event_id: string
           id: string
           invite_physical: boolean
           invite_physical_at: string | null
@@ -85,6 +212,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          event_id?: string
           id?: string
           invite_physical?: boolean
           invite_physical_at?: string | null
@@ -96,6 +224,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          event_id?: string
           id?: string
           invite_physical?: boolean
           invite_physical_at?: string | null
@@ -105,12 +234,21 @@ export type Database = {
           rsvp_deadline?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "families_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guests: {
         Row: {
           age: number | null
           created_at: string
+          event_id: string
           family_id: string | null
           host_id: string | null
           id: string
@@ -130,6 +268,7 @@ export type Database = {
         Insert: {
           age?: number | null
           created_at?: string
+          event_id?: string
           family_id?: string | null
           host_id?: string | null
           id?: string
@@ -149,6 +288,7 @@ export type Database = {
         Update: {
           age?: number | null
           created_at?: string
+          event_id?: string
           family_id?: string | null
           host_id?: string | null
           id?: string
@@ -166,6 +306,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "guests_family_id_fkey"
             columns: ["family_id"]
@@ -185,29 +332,41 @@ export type Database = {
       hosts: {
         Row: {
           created_at: string
+          event_id: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          event_id?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          event_id?: string
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hosts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       installments: {
         Row: {
           amount: number
           created_at: string
           due: string | null
+          event_id: string
           expense_id: string | null
           id: string
           label: string | null
@@ -222,6 +381,7 @@ export type Database = {
           amount?: number
           created_at?: string
           due?: string | null
+          event_id?: string
           expense_id?: string | null
           id?: string
           label?: string | null
@@ -236,6 +396,7 @@ export type Database = {
           amount?: number
           created_at?: string
           due?: string | null
+          event_id?: string
           expense_id?: string | null
           id?: string
           label?: string | null
@@ -247,6 +408,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "installments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "installments_expense_id_fkey"
             columns: ["expense_id"]
@@ -266,23 +434,34 @@ export type Database = {
       payers: {
         Row: {
           created_at: string
+          event_id: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          event_id?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          event_id?: string
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -386,6 +565,7 @@ export type Database = {
           contact: string | null
           created_at: string
           due: string | null
+          event_id: string
           id: string
           name: string
           notes: string | null
@@ -399,6 +579,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           due?: string | null
+          event_id?: string
           id?: string
           name: string
           notes?: string | null
@@ -412,6 +593,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           due?: string | null
+          event_id?: string
           id?: string
           name?: string
           notes?: string | null
@@ -420,13 +602,22 @@ export type Database = {
           updated_at?: string
           value?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
           area: string | null
           created_at: string
           due: string | null
+          event_id: string
           id: string
           legacy_id: number | null
           name: string
@@ -440,6 +631,7 @@ export type Database = {
           area?: string | null
           created_at?: string
           due?: string | null
+          event_id?: string
           id?: string
           legacy_id?: number | null
           name: string
@@ -453,6 +645,7 @@ export type Database = {
           area?: string | null
           created_at?: string
           due?: string | null
+          event_id?: string
           id?: string
           legacy_id?: number | null
           name?: string
@@ -462,7 +655,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -490,6 +691,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      event_role_of: {
+        Args: { _event: string; _user?: string }
+        Returns: Database["public"]["Enums"]["event_member_role"]
+      }
+      has_event_role: {
+        Args: {
+          _event: string
+          _roles: Database["public"]["Enums"]["event_member_role"][]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -497,9 +709,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_event_member: { Args: { _event: string }; Returns: boolean }
+      shares_event_with: { Args: { _user: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "aniversariante"
+      event_member_role:
+        | "owner"
+        | "organizer"
+        | "planner"
+        | "rsvp"
+        | "celebrant"
+        | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -628,6 +849,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "aniversariante"],
+      event_member_role: [
+        "owner",
+        "organizer",
+        "planner",
+        "rsvp",
+        "celebrant",
+        "viewer",
+      ],
     },
   },
 } as const

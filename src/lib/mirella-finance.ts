@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { activeEventId } from "@/lib/active-event";
 
 export type Supplier = {
   id: string;
@@ -31,7 +32,7 @@ export function useSuppliers() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("suppliers").select("*").order("created_at", { ascending: true });
+    const { data } = await supabase.from("suppliers").select("*").eq("event_id", activeEventId()).order("created_at", { ascending: true });
     setItems((data ?? []).map((row) => ({
       id: row.id,
       name: row.name,
@@ -49,7 +50,7 @@ export function useSuppliers() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const create = useCallback(async (values: Omit<Supplier, "id">) => {
-    await supabase.from("suppliers").insert(values);
+    await supabase.from("suppliers").insert({ ...values, event_id: activeEventId() });
     await refresh();
   }, [refresh]);
 
@@ -71,7 +72,7 @@ export function useExpenses() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.from("expenses").select("*").order("created_at", { ascending: true });
+    const { data } = await supabase.from("expenses").select("*").eq("event_id", activeEventId()).order("created_at", { ascending: true });
     setItems((data ?? []).map((row) => ({
       id: row.id,
       name: row.name,
@@ -87,7 +88,7 @@ export function useExpenses() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const create = useCallback(async (values: Omit<Expense, "id">) => {
-    await supabase.from("expenses").insert(values);
+    await supabase.from("expenses").insert({ ...values, event_id: activeEventId() });
     await refresh();
   }, [refresh]);
 

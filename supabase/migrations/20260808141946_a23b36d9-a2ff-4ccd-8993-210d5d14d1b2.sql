@@ -1,0 +1,10 @@
+ALTER TABLE public.families DROP CONSTRAINT families_name_key;
+ALTER TABLE public.families ADD CONSTRAINT families_event_name_key UNIQUE (event_id, name);
+ALTER TABLE public.hosts DROP CONSTRAINT hosts_name_key;
+ALTER TABLE public.hosts ADD CONSTRAINT hosts_event_name_key UNIQUE (event_id, name);
+ALTER TABLE public.payers DROP CONSTRAINT payers_name_key;
+ALTER TABLE public.payers ADD CONSTRAINT payers_event_name_key UNIQUE (event_id, name);
+ALTER TABLE public.guests DROP CONSTRAINT guests_legacy_id_key;
+ALTER TABLE public.guests ADD CONSTRAINT guests_event_legacy_key UNIQUE (event_id, legacy_id);
+ALTER TABLE public.tasks DROP CONSTRAINT tasks_legacy_id_key;
+ALTER TABLE public.tasks ADD CONSTRAINT tasks_event_legacy_key UNIQUE (event_id, legacy_id);
