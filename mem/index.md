@@ -7,3 +7,4 @@ Idioma da interface: português do Brasil. Estética rosa claro/dourado.
 
 ## Memories
 - [Papéis por evento](mem://features/event-roles) — permissões de owner, organizer, planner, RSVP, aniversariante e viewer
+- [Central de avisos (push)](mem://features/avisos-push) — público por papel/pessoa, avisos automáticos de tarefa, RSVP e pendentes
