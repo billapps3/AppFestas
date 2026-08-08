@@ -186,8 +186,8 @@ type SettingsReader = {
   };
 };
 
-async function automaticAudience(client: SettingsReader, eventId: string, kind: AutoKind) {
-  const { data } = await client
+async function automaticAudience(client: unknown, eventId: string, kind: AutoKind) {
+  const { data } = await (client as SettingsReader)
     .from("notification_settings")
     .select("enabled, audience_roles")
     .eq("event_id", eventId)
