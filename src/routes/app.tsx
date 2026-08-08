@@ -259,7 +259,16 @@ function FestaApp() {
   );
 
   const changeTaskStatus = (id: number) => {
-    setTasks((current) => current.map((task) => task.id === id ? { ...task, status: task.status === "Concluído" ? "Em andamento" : "Concluído" } : task));
+    setTasks((current) =>
+      current.map((task) => {
+        if (task.id !== id) return task;
+        const nextStatus: TaskStatus = task.status === "Concluído" ? "Em andamento" : "Concluído";
+        if (nextStatus === "Concluído" && session.activeEventId) {
+          void notifyTaskDone({ data: { eventId: session.activeEventId, taskName: task.name } }).catch(() => undefined);
+        }
+        return { ...task, status: nextStatus };
+      }),
+    );
   };
 
   const addTask = (task: Omit<Task, "id">) => {
@@ -275,7 +284,15 @@ function FestaApp() {
   };
 
   const changeGuestStatus = (id: number, status: GuestStatus) => {
-    setGuests((current) => current.map((guest) => guest.id === id ? { ...guest, status } : guest));
+    setGuests((current) => {
+      const guest = current.find((item) => item.id === id);
+      if (guest && guest.status !== status && (status === "Confirmado" || status === "Declinado") && session.activeEventId) {
+        void notifyGuestRsvp({
+          data: { eventId: session.activeEventId, guestName: guest.name, status, family: guest.family || undefined },
+        }).catch(() => undefined);
+      }
+      return current.map((item) => (item.id === id ? { ...item, status } : item));
+    });
   };
 
   const updateGuest = (id: number, patch: Partial<Guest>) => {
