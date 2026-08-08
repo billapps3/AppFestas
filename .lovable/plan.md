@@ -67,3 +67,33 @@ Modelos de checklist por tipo de evento, duplicar evento, painel com todos os ev
 ## Recomendação
 
 Começar pelas Fases 1 e 2. Sem multi-evento e sem permissão no banco, cobrar seria vender algo que ainda não isola um cliente do outro. Com essas duas fases prontas o app já pode ser testado com uma cerimonialista real, e a Fase 3 vira o gancho de venda.
+
+## Execução aprovada: Fases 1 e 2
+
+### Preservar os dados da Mirella
+
+Nenhuma linha é apagada nem recriada. A migração é aditiva e em passos:
+
+1. Antes de qualquer coisa, cópia de segurança das tabelas atuais (convidados, famílias, anfitriões, tarefas, fornecedores, despesas, parcelas, perfis) em tabelas `backup_*` dentro do próprio banco.
+2. Criar `events` e `event_members` e inserir o evento "15 anos da Mirella" (02/10/2026).
+3. Adicionar `event_id` **nullable** em cada tabela de dados.
+4. Preencher `event_id` de todas as linhas existentes com o evento da Mirella e só então torná-lo obrigatório.
+5. Inserir William (proprietário), Késya e Mirella em `event_members` com os papéis atuais.
+6. Conferir a contagem por tabela antes e depois; se algo divergir, a migração não avança.
+
+As colunas antigas (`user_roles`, `can_finance`, `party_role`) continuam existindo durante a transição, para o app não quebrar enquanto a interface é atualizada.
+
+### Segurança
+
+- Toda tabela de dados troca a política atual "qualquer logado faz tudo" por acesso condicionado a ser membro do evento, via função `security definer` (evita recursão nas políticas).
+- Escrita separada por papel: RSVP só altera o campo de confirmação do convidado, checado por gatilho no banco — não só na tela; cerimonialista não apaga; financeiro exige papel com permissão.
+- `events` e `event_members`: só membros leem; só o proprietário e o admin do evento convidam, mudam papel ou removem alguém, sem possibilidade de alguém elevar o próprio papel.
+- Convites de equipe por token de uso único com validade, associado ao e-mail convidado — nada de virar membro só por adivinhar um link.
+- Grants explícitos para `authenticated`, sem acesso `anon` a nenhuma tabela nesta fase.
+- Ao final rodo o verificador de segurança do banco e testo na prática: um usuário RSVP não consegue ler fornecedores nem financeiro, e um usuário de outro evento não enxerga nada da Mirella.
+
+### O que muda na tela
+
+- Seletor de evento no topo (com um evento só, aparece discreto).
+- Nova tela **Equipe**: lista de membros, convite por e-mail, papel por pessoa, remover acesso — substitui o card "Acessos e permissões" atual.
+- Menu e ações passam a respeitar o papel no evento; o perfil RSVP abre direto na lista de convidados, sem o resto.
