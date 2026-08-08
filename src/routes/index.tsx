@@ -902,15 +902,15 @@ function GuestsView({ guests, allGuests, search, setSearch, hostFilter, setHostF
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
                   {!isGroup && <FamilyInviteControl family={family} invite={familyInvites[family]} onChange={onFamilyPhysical} />}
-                  <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <label className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
                     {isGroup ? "Responsável do grupo" : "Responsável da família"}
                     <select
                       aria-label={`Responsável ${isGroup ? "do grupo" : "da família"} ${family}`}
                       value={principal?.host ?? section.people.find((guest) => guest.family === family)?.host ?? ""}
                       onChange={(event) => onFamilyHost(family, event.target.value)}
-                      className="rounded-md border border-border bg-background px-2 py-1.5 text-[11px] font-medium text-foreground outline-none"
+                      className="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-2 py-1.5 text-[11px] font-medium text-foreground outline-none xl:w-[150px] xl:flex-none"
                     >
                       <option value="">Sem responsável</option>
                       {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
