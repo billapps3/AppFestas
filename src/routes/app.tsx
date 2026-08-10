@@ -12,6 +12,7 @@ import {
   loadMirellaState,
   saveFamilyInvite,
   saveMirellaState,
+  deleteGuest as deleteGuestRow,
   type FamilyInvite,
 } from "@/lib/mirella-store";
 import {
@@ -462,6 +463,14 @@ function FestaApp() {
     );
   };
 
+  const deleteGuest = (id: number) => {
+    const guest = guests.find((item) => item.id === id);
+    if (!guest) return;
+    if (!window.confirm(`Excluir ${guest.name} da lista de convidados?`)) return;
+    setGuests((current) => current.filter((item) => item.id !== id));
+    void deleteGuestRow(id).catch(() => setSaveState("error"));
+  };
+
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
@@ -721,6 +730,7 @@ function FestaApp() {
               addGuest={addGuest}
               onStatus={changeGuestStatus}
               onUpdate={updateGuest}
+              onDelete={deleteGuest}
               onFamilyHost={setFamilyHost}
               familyInvites={familyInvites}
               onFamilyPhysical={setFamilyPhysical}
@@ -1826,6 +1836,7 @@ type GuestsViewProps = {
   addGuest: () => void;
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
+  onDelete: (id: number) => void;
   onFamilyHost: (family: string, host: string) => void;
   familyInvites: Record<string, FamilyInvite>;
   onFamilyPhysical: (family: string, invite: FamilyInvite) => void;
@@ -1845,6 +1856,7 @@ function GuestsView({
   addGuest,
   onStatus,
   onUpdate,
+  onDelete,
   onFamilyHost,
   familyInvites,
   onFamilyPhysical,
@@ -2064,6 +2076,7 @@ function GuestsView({
                         families={familyOptions}
                         onStatus={onStatus}
                         onUpdate={onUpdate}
+                        onDelete={onDelete}
                       />
                     )}
                     {members.map((guest) => (
@@ -2074,6 +2087,7 @@ function GuestsView({
                         families={familyOptions}
                         onStatus={onStatus}
                         onUpdate={onUpdate}
+                        onDelete={onDelete}
                       />
                     ))}
                   </div>
@@ -2094,6 +2108,7 @@ function GuestsView({
                       families={familyOptions}
                       onStatus={onStatus}
                       onUpdate={onUpdate}
+                      onDelete={onDelete}
                     />
                   ))}
                 </div>
@@ -2119,6 +2134,7 @@ function GuestRow({
   families,
   onStatus,
   onUpdate,
+  onDelete,
 }: {
   guest: Guest;
   isPrincipal?: boolean;
@@ -2126,6 +2142,7 @@ function GuestRow({
   families: string[];
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
+  onDelete: (id: number) => void;
 }) {
   return (
     <div className="grid gap-3 p-4 transition hover:bg-muted/25 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -2266,6 +2283,17 @@ function GuestRow({
         <div className="col-span-2 lg:col-span-1 lg:shrink-0">
           <GuestStatusSelect guest={guest} onStatus={onStatus} />
         </div>
+
+        <button
+          type="button"
+          aria-label={`Excluir ${guest.name}`}
+          title="Excluir convidado"
+          onClick={() => onDelete(guest.id)}
+          className="col-span-2 flex items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground transition hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive lg:col-span-1 lg:size-8 lg:shrink-0 lg:p-0"
+        >
+          <Trash2 className="size-3.5" />
+          <span className="lg:hidden">Excluir</span>
+        </button>
       </div>
     </div>
   );

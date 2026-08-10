@@ -145,6 +145,15 @@ export async function saveMirellaState(state: MirellaState) {
 
 export type FamilyInvite = { physical: boolean; physicalAt: string; virtual: boolean; virtualAt: string; deadline: string };
 
+export async function deleteGuest(legacyId: number) {
+  const { error } = await supabase
+    .from("guests")
+    .delete()
+    .eq("event_id", activeEventId())
+    .eq("legacy_id", legacyId);
+  if (error) throw error;
+}
+
 export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
   const { data } = await supabase
     .from("families")
