@@ -12,6 +12,7 @@ import {
   loadMirellaState,
   saveFamilyInvite,
   saveMirellaState,
+  deleteGuest as deleteGuestRow,
   type FamilyInvite,
 } from "@/lib/mirella-store";
 import {
@@ -462,6 +463,14 @@ function FestaApp() {
     );
   };
 
+  const deleteGuest = (id: number) => {
+    const guest = guests.find((item) => item.id === id);
+    if (!guest) return;
+    if (!window.confirm(`Excluir ${guest.name} da lista de convidados?`)) return;
+    setGuests((current) => current.filter((item) => item.id !== id));
+    void deleteGuestRow(id).catch(() => setSaveState("error"));
+  };
+
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
@@ -721,6 +730,7 @@ function FestaApp() {
               addGuest={addGuest}
               onStatus={changeGuestStatus}
               onUpdate={updateGuest}
+              onDelete={deleteGuest}
               onFamilyHost={setFamilyHost}
               familyInvites={familyInvites}
               onFamilyPhysical={setFamilyPhysical}
@@ -1826,6 +1836,7 @@ type GuestsViewProps = {
   addGuest: () => void;
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
+  onDelete: (id: number) => void;
   onFamilyHost: (family: string, host: string) => void;
   familyInvites: Record<string, FamilyInvite>;
   onFamilyPhysical: (family: string, invite: FamilyInvite) => void;
@@ -1845,6 +1856,7 @@ function GuestsView({
   addGuest,
   onStatus,
   onUpdate,
+  onDelete,
   onFamilyHost,
   familyInvites,
   onFamilyPhysical,
