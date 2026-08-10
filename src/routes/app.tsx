@@ -91,9 +91,14 @@ function useSessionProfile() {
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (active && !data.session) navigate({ to: "/auth", replace: true });
-    });
+    const verifyAccess = async () => {
+      // Give an OAuth callback one turn to finish persisting its session before
+      // deciding that this protected screen must return to login.
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+      const { data } = await supabase.auth.getUser();
+      if (active && !data.user) await navigate({ to: "/auth", replace: true });
+    };
+    void verifyAccess();
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") navigate({ to: "/auth", replace: true });
     });

@@ -30,13 +30,20 @@ function AuthPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const openAppWithVerifiedSession = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return false;
+    await navigate({ to: "/app", replace: true });
+    return true;
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app", replace: true });
-    });
+    void openAppWithVerifiedSession();
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")) {
-        navigate({ to: "/app", replace: true });
+        // Auth events can fire before setSession finishes persisting the tokens.
+        // Defer verification so /app never sees a transient signed-out state.
+        window.setTimeout(() => void openAppWithVerifiedSession(), 0);
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -76,7 +83,8 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/app", replace: true });
+    const authenticated = await openAppWithVerifiedSession();
+    if (!authenticated) setMessage("O Google autorizou o acesso, mas a sessão não foi concluída. Tente novamente.");
   };
 
   return (
