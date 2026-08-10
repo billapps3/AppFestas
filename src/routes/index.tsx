@@ -96,9 +96,9 @@ function SalesPage() {
     let active = true;
 
     const openAppIfSignedIn = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getSession();
       if (!active) return;
-      if (data.user) {
+      if (data.session) {
         await navigate({ to: "/app", replace: true });
         return;
       }
