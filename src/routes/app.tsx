@@ -2076,6 +2076,7 @@ function GuestsView({
                         families={familyOptions}
                         onStatus={onStatus}
                         onUpdate={onUpdate}
+                        onDelete={onDelete}
                       />
                     )}
                     {members.map((guest) => (
@@ -2086,6 +2087,7 @@ function GuestsView({
                         families={familyOptions}
                         onStatus={onStatus}
                         onUpdate={onUpdate}
+                        onDelete={onDelete}
                       />
                     ))}
                   </div>
@@ -2106,6 +2108,7 @@ function GuestsView({
                       families={familyOptions}
                       onStatus={onStatus}
                       onUpdate={onUpdate}
+                      onDelete={onDelete}
                     />
                   ))}
                 </div>
@@ -2131,6 +2134,7 @@ function GuestRow({
   families,
   onStatus,
   onUpdate,
+  onDelete,
 }: {
   guest: Guest;
   isPrincipal?: boolean;
@@ -2138,6 +2142,7 @@ function GuestRow({
   families: string[];
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
+  onDelete: (id: number) => void;
 }) {
   return (
     <div className="grid gap-3 p-4 transition hover:bg-muted/25 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -2278,6 +2283,17 @@ function GuestRow({
         <div className="col-span-2 lg:col-span-1 lg:shrink-0">
           <GuestStatusSelect guest={guest} onStatus={onStatus} />
         </div>
+
+        <button
+          type="button"
+          aria-label={`Excluir ${guest.name}`}
+          title="Excluir convidado"
+          onClick={() => onDelete(guest.id)}
+          className="col-span-2 flex items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground transition hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive lg:col-span-1 lg:size-8 lg:shrink-0 lg:p-0"
+        >
+          <Trash2 className="size-3.5" />
+          <span className="lg:hidden">Excluir</span>
+        </button>
       </div>
     </div>
   );
