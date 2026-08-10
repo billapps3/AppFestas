@@ -1,8 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { CalendarCheck, CheckCircle2, ClipboardList, Gift, Users, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const title = "Festa Simples — organize convidados, tarefas e orçamento do evento";
 const description =
@@ -87,6 +89,39 @@ const faq = [
 ];
 
 function SalesPage() {
+  const navigate = useNavigate();
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const openAppIfSignedIn = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+      if (data.user) {
+        await navigate({ to: "/app", replace: true });
+        return;
+      }
+      setSessionChecked(true);
+    };
+
+    void openAppIfSignedIn();
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        void navigate({ to: "/app", replace: true });
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  if (!sessionChecked) {
+    return <div className="min-h-screen bg-background" aria-label="Verificando acesso" />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
