@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
-import { PushPanel } from "@/components/push-panel";
+import { MessagesView } from "@/components/messages-view";
 import { notifyGuestRsvp, notifyTaskDone } from "@/lib/push.functions";
 import { TeamPanel } from "@/components/team-panel";
 import { useEventAccess, eventRoleLabel } from "@/lib/event-access";
@@ -121,7 +121,7 @@ function useSessionProfile() {
   return access;
 }
 
-type View = "overview" | "tasks" | "guests" | "suppliers" | "finance" | "team";
+type View = "overview" | "tasks" | "guests" | "messages" | "suppliers" | "finance" | "team";
 type TaskStatus = "Concluído" | "Em andamento" | "Aguardando";
 type GuestStatus = "Confirmado" | "Aguardando" | "Declinado";
 
@@ -277,6 +277,7 @@ const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "tasks", label: "Tarefas", icon: ClipboardCheck },
   { id: "guests", label: "Convidados", icon: Users },
+  { id: "messages", label: "Comunicados", icon: Bell },
   { id: "suppliers", label: "Fornecedores", icon: Store },
   { id: "finance", label: "Financeiro", icon: WalletCards },
   { id: "team", label: "Equipe", icon: ShieldCheck },
@@ -513,7 +514,7 @@ function FestaApp() {
 
   useEffect(() => {
     if (!session.ready) return;
-    if (session.role === "rsvp" && view !== "guests") setView("guests");
+    if (session.role === "rsvp" && view !== "guests" && view !== "messages") setView("guests");
   }, [session.ready, session.role, view]);
 
   if (!session.ready) {
@@ -708,7 +709,6 @@ function FestaApp() {
                 onView={selectView}
                 canFinance={session.can.finance}
               />
-              <PushPanel isAdmin={session.can.team} eventId={session.activeEventId} />
             </div>
           )}
           {view === "tasks" && session.can.tasks && (
@@ -741,10 +741,8 @@ function FestaApp() {
               onFamilyPhysical={setFamilyPhysical}
             />
           )}
-          {view === "guests" && session.role === "rsvp" && (
-            <div className="mt-6">
-              <PushPanel isAdmin={false} eventId={session.activeEventId} />
-            </div>
+          {view === "messages" && (
+            <MessagesView canManage={session.can.team} eventId={session.activeEventId} />
           )}
           {view === "team" && session.can.team && (
             <TeamPanel
