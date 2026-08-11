@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { importedGuests } from "@/lib/mirella-guests";
 import { MessagesView } from "@/components/messages-view";
+import { GuestReportDialog } from "@/components/guest-report";
 import { notifyGuestRsvp, notifyTaskDone } from "@/lib/push.functions";
 import { TeamPanel } from "@/components/team-panel";
 import { useEventAccess, eventRoleLabel } from "@/lib/event-access";
@@ -43,6 +44,7 @@ import {
   LayoutDashboard,
   Menu,
   MoreHorizontal,
+  FileDown,
   PackageCheck,
   PanelLeftClose,
   Pencil,
@@ -1874,6 +1876,7 @@ function GuestsView({
       ).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [allGuests],
   );
+  const [reportOpen, setReportOpen] = useState(false);
 
   const sections = useMemo(() => {
     const groups = [...hosts, "Sem responsável"];
@@ -1927,11 +1930,32 @@ function GuestsView({
         title="Convidados"
         description="A lista está segmentada por responsável pelo convite e agrupada por família. Escolha o responsável de quem ainda estiver sem e confirme pessoa por pessoa."
         action={
-          <Button onClick={() => setShowForm(!showForm)}>
-            {showForm ? <X /> : <Plus />}
-            {showForm ? "Fechar" : "Adicionar convidado"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setReportOpen(true)}>
+              <FileDown />
+              Relatório
+            </Button>
+            <Button onClick={() => setShowForm(!showForm)}>
+              {showForm ? <X /> : <Plus />}
+              {showForm ? "Fechar" : "Adicionar convidado"}
+            </Button>
+          </div>
         }
+      />
+      <GuestReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        guests={allGuests.map((guest) => ({
+          name: guest.name,
+          status: guest.status,
+          child: guest.child,
+          family: guest.family,
+          host: guest.host,
+        }))}
+        hosts={hosts}
+        isGroupFamily={isGroupFamily}
+        eventName="15 anos da Mirella"
+        eventDate="02/10/2026"
       />
       {showForm && (
         <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row">
