@@ -296,8 +296,8 @@ function money(value: number) {
 function FestaApp() {
   const session = useSessionProfile();
   const [view, setView] = useState<View>("overview");
-  const [tasks, setTasks] = useState(taskSeed);
-  const [guests, setGuests] = useState(guestNames);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
@@ -305,7 +305,10 @@ function FestaApp() {
   const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedAt, setSavedAt] = useState<string>("");
+  const [retryToken, setRetryToken] = useState(0);
   const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
 
   useEffect(() => {
@@ -327,23 +330,29 @@ function FestaApp() {
     return () => window.clearInterval(interval);
   }, []);
 
+  // Carga: só liberamos a gravação depois de uma leitura bem-sucedida do banco.
+  // Se a leitura falhar, a tela fica somente leitura — nunca sobrescreve com estado vazio.
   useEffect(() => {
     let active = true;
     loadMirellaState()
       .then((state) => {
-        if (!active || !state) return;
-        if (state.tasks?.length) setTasks(state.tasks as Task[]);
-        if (state.guests?.length) {
-          setGuests(
-            state.guests.map((guest) => ({
-              ...guest,
-              status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
-            })) as Guest[],
-          );
+        if (!active) return;
+        if (!state) {
+          setLoadFailed(true);
+          return;
         }
+        setTasks((state.tasks ?? []) as Task[]);
+        setGuests(
+          (state.guests ?? []).map((guest) => ({
+            ...guest,
+            status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
+          })) as Guest[],
+        );
+        setLoadFailed(false);
+        setLoaded(true);
       })
-      .finally(() => {
-        if (active) setLoaded(true);
+      .catch(() => {
+        if (active) setLoadFailed(true);
       });
     return () => {
       active = false;
@@ -351,15 +360,29 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || loadFailed) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
       saveMirellaState({ tasks, guests })
-        .then(() => setSaveState("saved"))
+        .then(() => {
+          setSaveState("saved");
+          setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+        })
         .catch(() => setSaveState("error"));
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [tasks, guests, loaded]);
+  }, [tasks, guests, loaded, loadFailed, retryToken]);
+
+  // Avisa ao sair somente quando existe alteração pendente de gravação.
+  useEffect(() => {
+    if (saveState !== "saving" && saveState !== "error") return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [saveState]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
