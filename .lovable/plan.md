@@ -1,4 +1,44 @@
-# Transformar o app em produto vendável (SaaS por evento)
+# Aba Comunicados + fazer os avisos chegarem na Késya
+
+## O que está acontecendo hoje
+
+- A Central de avisos existe, mas fica escondida **no fim da Visão geral**. Por isso você não encontra as caixinhas de escolher pessoas e tipos de mensagem — elas estão lá embaixo, dentro das abas "Enviar aviso" e "Automáticos".
+- Verifiquei os aparelhos cadastrados: **você tem 2 aparelhos ativos; Késya e Mirella têm zero**. Nenhum aviso pode chegar nelas porque nenhum celular delas foi ativado ainda — não é falta de permissão no sistema (Késya é organizadora e recebe todos os tipos).
+
+## O que a Késya precisa fazer
+
+1. Abrir o app no celular dela e entrar com o Google dela.
+2. Ir na nova aba **Comunicados** e tocar em "Ativar neste aparelho", aceitando o aviso do navegador.
+3. **No iPhone**: antes disso, é obrigatório abrir no Safari, tocar em Compartilhar e "Adicionar à Tela de Início", e então ativar por dentro desse ícone. O iPhone não envia avisos por site aberto no navegador.
+
+Para nunca mais ficar na dúvida, a nova aba vai mostrar a situação de cada pessoa da equipe: "recebendo em 2 aparelhos" ou "ainda não ativou".
+
+## A nova aba Comunicados
+
+Entra no menu lateral, entre Convidados e Equipe, visível para todos os perfis (inclusive recepção e aniversariante).
+
+Conteúdo, em cartões, um abaixo do outro:
+
+1. **Meu aparelho** — botão grande de ativar/desativar, com aviso claro quando o navegador bloqueou a permissão e a instrução do iPhone.
+2. **Escrever comunicado** (só dono e organizador) — título, mensagem, as caixinhas de **papéis** (dono, organizador, cerimonialista, recepção, aniversariante, visualizador) e a lista de **pessoas** com caixinha em cada nome, marcando quantos aparelhos cada uma tem. Botão "Enviar para X pessoa(s)".
+3. **Avisos automáticos** (só dono e organizador) — liga/desliga e papéis de cada tipo: tarefa concluída, confirmação/declínio de convidado, relatório diário de convites sem resposta.
+4. **Mensagens recebidas** — histórico do evento para todo mundo, com título, texto, quem enviou, para quem foi e quando. É aqui que você "vê as mensagens" mesmo sem o push ter aparecido no celular.
+5. **Quem está recebendo** (só dono e organizador) — lista da equipe com aparelhos ativos e um botão "Enviar teste" para conferir na hora.
+
+A Central de avisos sai da Visão geral e da aba Convidados, para não existir em dois lugares.
+
+## Detalhes técnicos
+
+- `src/routes/app.tsx`: novo `View` `"messages"`, item no `navItems` sem restrição em `visibleNav`, e remoção das duas instâncias antigas de `PushPanel`. O perfil `rsvp` passa a poder alternar entre Convidados e Comunicados (o `useEffect` que trava em `guests` precisa aceitar `messages`).
+- `src/components/push-panel.tsx` reescrito como `MessagesView` em cartões, sem as abas internas; composição e automáticos condicionados a `canManage`. Componentes auxiliares (`DeviceCard`, `ComposeCard`, `AutoRulesCard`, `HistoryList`, `TeamReachCard`) no mesmo arquivo ou em `src/components/messages/`.
+- Histórico passa a trazer o nome de quem enviou: `select` com `profiles:sent_by(display_name)` em `push_messages`; a política atual já limita a membros do evento.
+- Nova função em `src/lib/push.functions.ts`: `listPushReach` (owner/organizer) devolvendo, por membro, papel, nome e contagem de inscrições — lida via `event_members` + `push_subscriptions` com o cliente autenticado; e `sendTestPush` reaproveitando `deliverPush` com `userIds: [caller]` ou o membro escolhido.
+- `listEventMembersForPush` passa a ser chamada também quando o usuário não é gestor? Não: continua restrita, e o cartão "Quem está recebendo" só aparece para gestor.
+- Deteção de iPhone/PWA no cartão do aparelho: `navigator.standalone`/`display-mode: standalone` para mostrar a instrução certa em vez de um erro seco de permissão.
+
+---
+
+# Guardado para depois: transformar o app em produto vendável (SaaS por evento)
 
 ## Como fica o banco de dados
 
@@ -58,7 +98,7 @@ A festa da Mirella continua sendo apenas mais um evento nesse conjunto, sem risc
 - Novo `src/lib/billing.functions.ts` com `createEventForOwner`, `startCheckout` e `getEventBilling`.
 - Painel administrativo simples em `src/routes/_authenticated/admin.tsx`, restrito ao papel `admin`.
 
-**Ordem sugerida**
+**Ordem sugerida (quando retomarmos)**
 1. Migração de assinatura + criação de festa em autoatendimento + teste de 14 dias.
 2. Modo leitura e limites por plano.
 3. Pagamentos e webhook.
