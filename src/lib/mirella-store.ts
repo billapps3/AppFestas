@@ -94,6 +94,27 @@ export async function saveMirellaState(state: MirellaState) {
   const { tasks, guests } = state;
   if (!guests.length) return; // nunca sobrescreve com lista vazia
 
+  // Trava de segurança: bloqueia gravações que apagariam família/responsável em massa.
+  const { data: currentRows } = await supabase
+    .from("guests")
+    .select("legacy_id, family_id, host_id")
+    .eq("event_id", activeEventId());
+  if (currentRows?.length) {
+    const byLegacy = new Map(currentRows.map((row) => [row.legacy_id, row]));
+    let clearing = 0;
+    for (const guest of guests) {
+      const current = byLegacy.get(guest.id);
+      if (!current) continue;
+      if (current.family_id && !guest.family) clearing += 1;
+      if (current.host_id && !guest.host) clearing += 1;
+    }
+    if (clearing > 5) {
+      throw new Error(
+        `Gravação bloqueada: ${clearing} vínculos de família/responsável seriam apagados de uma vez.`,
+      );
+    }
+  }
+
   const familyIds = await ensureNames("families", [...new Set(guests.map((guest) => guest.family))]);
   const hostIds = await ensureNames("hosts", [...new Set(guests.map((guest) => guest.host))]);
 
