@@ -21,6 +21,14 @@
 - Trava de segurança: qualquer gravação que apagaria família/responsável de vários convidados de uma vez é bloqueada.
 - Snapshot diário automático da lista, para recuperação rápida.
 
+### 2b. Botão de salvar? Recomendação
+Não vale a pena um botão de salvar manual — ele cria justamente o risco que você quer evitar (esquecer de salvar e perder a edição). O problema nunca foi salvar demais, foi **salvar a coisa errada**.
+O que faço no lugar:
+- Cada alteração (status, família, responsável, convite) grava **na hora, só aquele campo daquele convidado**.
+- Indicador visível no topo: "Salvando… / Salvo às 16:12 / Erro ao salvar" — nada de dúvida sobre o que foi gravado.
+- Se a gravação falhar, um aviso fica na tela com botão **"Tentar salvar de novo"**, e a alteração não some.
+- Aviso ao sair da página só quando houver alteração pendente de gravação (falha ou envio em andamento) — sem incomodar no uso normal.
+
 ### 3. Refazer o relatório
 - Volta a espelhar exatamente a tela: **Responsável → Família (titular + dependentes) → convidados individuais**, um convidado por linha, com **status legível** (Confirmado / Aguardando / Declinado) e marcação de criança.
 - Números no topo mantidos (convidados, confirmados, aguardando, declinados, crianças, saldo pagante) e subtotais por responsável e por família.
@@ -30,6 +38,6 @@
 ## Detalhes técnicos
 
 - Restauração via SQL: casamento por `name` dentro do `event_id` da Mirella, preenchendo `family_id`/`host_id` a partir do JSON de `app_state.mirella15-backup-v2`, criando as `families`/`hosts` que faltarem e recalculando `is_primary`.
-- `src/routes/app.tsx`: remover `importedGuests` como estado inicial; `loaded` só se torna verdadeiro em sucesso; autosave substituído por mutações pontuais em `src/lib/mirella-store.ts`.
+- `src/routes/app.tsx`: remover `importedGuests` como estado inicial; `loaded` só se torna verdadeiro em sucesso; autosave de lista inteira substituído por mutações pontuais em `src/lib/mirella-store.ts` (update por `legacy_id`), com estado `saving/saved/error`, botão de retry e `beforeunload` apenas quando há pendência.
 - `saveMirellaState` deixa de fazer upsert de lista completa; guarda adicional rejeita lote em que vários convidados perderiam `family_id`/`host_id`.
 - `src/components/guest-report.tsx`: layout em blocos por responsável/família com linhas por convidado e `break-inside: avoid` no corte de página.
