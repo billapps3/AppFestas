@@ -79,18 +79,31 @@ function Tally({ people }: { people: ReportGuest[] }) {
 
 function NameList({ people }: { people: ReportGuest[] }) {
   return (
-    <div style={{ fontSize: 10.5, lineHeight: 1.45, color: ink }}>
+    <div style={{ fontSize: 10.5, color: ink }}>
       {people.map((guest, index) => (
-        <span key={guest.name + index}>
-          {index > 0 && <span style={{ color: line }}> | </span>}
-          <span style={{ color: markColor[guest.status], fontWeight: 700 }}>
-            {mark[guest.status]}
-          </span>{" "}
-          <span style={{ textDecoration: guest.status === "Declinado" ? "line-through" : "none" }}>
-            {guest.name}
+        <div
+          key={guest.name + index}
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "2px 0",
+            borderTop: index === 0 ? "none" : `1px solid ${line}`,
+            breakInside: "avoid",
+          }}
+        >
+          <span>
+            <span style={{ color: markColor[guest.status], fontWeight: 700 }}>
+              {mark[guest.status]}
+            </span>{" "}
+            <span>{guest.name}</span>
+            {guest.child && <span style={{ color: soft }}> · criança</span>}
           </span>
-          {guest.child && <span style={{ color: soft }}> (criança)</span>}
-        </span>
+          <span style={{ color: markColor[guest.status], fontSize: 9.5, whiteSpace: "nowrap" }}>
+            {guest.status}
+          </span>
+        </div>
       ))}
     </div>
   );
@@ -334,6 +347,7 @@ export function GuestReportDialog({
                         border: `1px solid ${line}`,
                         borderRadius: 6,
                         padding: "6px 8px",
+                        breakInside: "avoid",
                       }}
                     >
                       <div
@@ -366,6 +380,7 @@ export function GuestReportDialog({
                         border: `1px solid ${line}`,
                         borderRadius: 6,
                         padding: "6px 8px",
+                        breakInside: "avoid",
                       }}
                     >
                       <div
@@ -378,8 +393,16 @@ export function GuestReportDialog({
                         <div style={{ fontSize: 11, fontWeight: 700 }}>Individuais</div>
                         <Tally people={section.singles} />
                       </div>
-                      <div style={{ marginTop: 3 }}>
-                        <NameList people={section.singles} />
+                      <div
+                        style={{
+                          marginTop: 3,
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          columnGap: 14,
+                        }}
+                      >
+                        <NameList people={section.singles.slice(0, Math.ceil(section.singles.length / 2))} />
+                        <NameList people={section.singles.slice(Math.ceil(section.singles.length / 2))} />
                       </div>
                     </div>
                   )}

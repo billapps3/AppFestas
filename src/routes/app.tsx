@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { importedGuests } from "@/lib/mirella-guests";
 import { MessagesView } from "@/components/messages-view";
 import { GuestReportDialog } from "@/components/guest-report";
 import { notifyGuestRsvp, notifyTaskDone } from "@/lib/push.functions";
@@ -161,119 +160,6 @@ const taskStatuses: TaskStatus[] = ["Aguardando", "Em andamento", "Concluído"];
 const extraFamilies = ["Mirella Colégio", "Mirella CNA", "Mirella Vôlei", "Mirella Igreja"];
 const groupFamilies = new Set(extraFamilies);
 const isGroupFamily = (family: string) => groupFamilies.has(family);
-const seedFamilies: Record<number, string> = {
-  14: "Tio Luiz Carlos Nogueira",
-  15: "Tio Luiz Carlos Nogueira",
-  16: "Tio Luiz Carlos Nogueira",
-  17: "Tio Luiz Carlos Nogueira",
-  18: "Tio Luiz Carlos Nogueira",
-};
-
-const taskSeed: Task[] = [
-  {
-    id: 1,
-    name: "Definir identidade visual",
-    area: "Preparação",
-    owner: "Késya",
-    due: "08 ago",
-    status: "Concluído",
-    priority: "Alta",
-  },
-  {
-    id: 2,
-    name: "Lista de convidados",
-    area: "Convidados",
-    owner: "Késya",
-    due: "12 ago",
-    status: "Concluído",
-    priority: "Alta",
-  },
-  {
-    id: 3,
-    name: "Escolher convite físico",
-    area: "Convites físicos",
-    owner: "Mirella",
-    due: "18 ago",
-    status: "Em andamento",
-    priority: "Alta",
-  },
-  {
-    id: 4,
-    name: "Enviar convites virtuais",
-    area: "Convites virtuais",
-    owner: "Késya",
-    due: "25 ago",
-    status: "Aguardando",
-    priority: "Alta",
-  },
-  {
-    id: 5,
-    name: "Contratar buffet",
-    area: "Fornecedores",
-    owner: "Papai",
-    due: "30 ago",
-    status: "Em andamento",
-    priority: "Alta",
-  },
-  {
-    id: 6,
-    name: "Escolher vestido",
-    area: "Produção",
-    owner: "Mirella",
-    due: "05 set",
-    status: "Em andamento",
-    priority: "Média",
-  },
-  {
-    id: 7,
-    name: "Produção dos chinelos",
-    area: "Lembranças",
-    owner: "Késya",
-    due: "10 set",
-    status: "Aguardando",
-    priority: "Média",
-  },
-  {
-    id: 8,
-    name: "Fechar playlist com DJ",
-    area: "Festa",
-    owner: "Mirella",
-    due: "18 set",
-    status: "Aguardando",
-    priority: "Baixa",
-  },
-  {
-    id: 9,
-    name: "Prova do vestido",
-    area: "Produção",
-    owner: "Mirella",
-    due: "20 set",
-    status: "Aguardando",
-    priority: "Média",
-  },
-  {
-    id: 10,
-    name: "Confirmar decoração",
-    area: "Fornecedores",
-    owner: "Papai",
-    due: "24 set",
-    status: "Aguardando",
-    priority: "Alta",
-  },
-];
-
-const guestNames: Guest[] = importedGuests.map((guest, index) => ({
-  ...guest,
-  status: index < 72 ? "Confirmado" : "Aguardando",
-  virtual: index < 31,
-  virtualAt: "",
-  deadline: "",
-  physical: index < 14,
-  personal: index < 6,
-  child: typeof guest.age === "number" ? guest.age <= 10 : false,
-  family: seedFamilies[guest.id] ?? "",
-  host: "",
-}));
 
 const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
@@ -296,8 +182,8 @@ function money(value: number) {
 function FestaApp() {
   const session = useSessionProfile();
   const [view, setView] = useState<View>("overview");
-  const [tasks, setTasks] = useState(taskSeed);
-  const [guests, setGuests] = useState(guestNames);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
@@ -305,7 +191,10 @@ function FestaApp() {
   const [hostFilter, setHostFilter] = useState("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedAt, setSavedAt] = useState<string>("");
+  const [retryToken, setRetryToken] = useState(0);
   const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
 
   useEffect(() => {
@@ -327,23 +216,29 @@ function FestaApp() {
     return () => window.clearInterval(interval);
   }, []);
 
+  // Carga: só liberamos a gravação depois de uma leitura bem-sucedida do banco.
+  // Se a leitura falhar, a tela fica somente leitura — nunca sobrescreve com estado vazio.
   useEffect(() => {
     let active = true;
     loadMirellaState()
       .then((state) => {
-        if (!active || !state) return;
-        if (state.tasks?.length) setTasks(state.tasks as Task[]);
-        if (state.guests?.length) {
-          setGuests(
-            state.guests.map((guest) => ({
-              ...guest,
-              status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
-            })) as Guest[],
-          );
+        if (!active) return;
+        if (!state) {
+          setLoadFailed(true);
+          return;
         }
+        setTasks((state.tasks ?? []) as Task[]);
+        setGuests(
+          (state.guests ?? []).map((guest) => ({
+            ...guest,
+            status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
+          })) as Guest[],
+        );
+        setLoadFailed(false);
+        setLoaded(true);
       })
-      .finally(() => {
-        if (active) setLoaded(true);
+      .catch(() => {
+        if (active) setLoadFailed(true);
       });
     return () => {
       active = false;
@@ -351,15 +246,29 @@ function FestaApp() {
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || loadFailed) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
       saveMirellaState({ tasks, guests })
-        .then(() => setSaveState("saved"))
+        .then(() => {
+          setSaveState("saved");
+          setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+        })
         .catch(() => setSaveState("error"));
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [tasks, guests, loaded]);
+  }, [tasks, guests, loaded, loadFailed, retryToken]);
+
+  // Avisa ao sair somente quando existe alteração pendente de gravação.
+  useEffect(() => {
+    if (saveState !== "saving" && saveState !== "error") return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [saveState]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
   const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
@@ -659,15 +568,27 @@ function FestaApp() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                {saveState === "saving"
-                  ? "Salvando…"
-                  : saveState === "saved"
-                    ? "Salvo na nuvem"
-                    : saveState === "error"
-                      ? "Erro ao salvar"
+              {loadFailed ? (
+                <span className="text-xs font-medium text-destructive">
+                  Somente leitura — falha ao carregar
+                </span>
+              ) : saveState === "error" ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setRetryToken((value) => value + 1)}
+                >
+                  Erro ao salvar · tentar de novo
+                </Button>
+              ) : (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  {saveState === "saving"
+                    ? "Salvando…"
+                    : saveState === "saved"
+                      ? `Salvo às ${savedAt}`
                       : ""}
-              </span>
+                </span>
+              )}
               <Button variant="ghost" size="icon" aria-label="Notificações" className="relative">
                 <Bell />
                 <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
