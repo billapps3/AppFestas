@@ -126,6 +126,62 @@ export const listEventMembersForPush = createServerFn({ method: "POST" })
     });
   });
 
+export const listPushReach = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { eventId: string }) => {
+    if (!data?.eventId) throw new Error("Evento inválido");
+    return data;
+  })
+  .handler(async ({ data, context }) => {
+    await assertManager(context.supabase, data.eventId);
+    const { data: members, error } = await context.supabase
+      .from("event_members")
+      .select("user_id, role, profiles:user_id(display_name, email)")
+      .eq("event_id", data.eventId);
+    if (error) throw new Error(error.message);
+
+    const ids = (members ?? []).map((row) => row.user_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: subs } = ids.length
+      ? await supabaseAdmin.from("push_subscriptions").select("user_id").in("user_id", ids)
+      : { data: [] as { user_id: string }[] };
+
+    const counts = new Map<string, number>();
+    for (const row of subs ?? []) counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1);
+
+    return (members ?? []).map((row) => {
+      const profile = row.profiles as { display_name?: string; email?: string } | null;
+      return {
+        userId: row.user_id,
+        role: row.role as Role,
+        name: profile?.display_name ?? profile?.email ?? "Participante",
+        email: profile?.email ?? "",
+        devices: counts.get(row.user_id) ?? 0,
+      };
+    });
+  });
+
+export const sendTestPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { eventId: string; userId?: string }) => {
+    if (!data?.eventId) throw new Error("Evento inválido");
+    return data;
+  })
+  .handler(async ({ data, context }) => {
+    await assertManager(context.supabase, data.eventId);
+    const { deliverPush } = await import("@/lib/push.server");
+    return deliverPush(
+      { title: "Teste de aviso", body: "Se você viu isto, os avisos estão funcionando.", url: "/app" },
+      {
+        sentBy: context.userId,
+        automatic: false,
+        kind: "manual",
+        eventId: data.eventId,
+        userIds: [data.userId ?? context.userId],
+      },
+    );
+  });
+
 export const getNotificationSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { eventId: string }) => {
