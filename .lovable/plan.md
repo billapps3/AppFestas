@@ -33,7 +33,7 @@ A Central de avisos sai da Visão geral e da aba Convidados, para não existir e
 - `src/components/push-panel.tsx` reescrito como `MessagesView` em cartões, sem as abas internas; composição e automáticos condicionados a `canManage`. Componentes auxiliares (`DeviceCard`, `ComposeCard`, `AutoRulesCard`, `HistoryList`, `TeamReachCard`) no mesmo arquivo ou em `src/components/messages/`.
 - Histórico passa a trazer o nome de quem enviou: `select` com `profiles:sent_by(display_name)` em `push_messages`; a política atual já limita a membros do evento.
 - Nova função em `src/lib/push.functions.ts`: `listPushReach` (owner/organizer) devolvendo, por membro, papel, nome e contagem de inscrições — lida via `event_members` + `push_subscriptions` com o cliente autenticado; e `sendTestPush` reaproveitando `deliverPush` com `userIds: [caller]` ou o membro escolhido.
-- `listEventMembersForPush` passa a ser chamada também quando o usuário não é gestor? Não: continua restrita, e o cartão "Quem está recebendo" só aparece para gestor.
+- `listEventMembersForPush` continua restrita a gestores, assim como o cartão "Quem está recebendo".
 - Deteção de iPhone/PWA no cartão do aparelho: `navigator.standalone`/`display-mode: standalone` para mostrar a instrução certa em vez de um erro seco de permissão.
 
 ---
