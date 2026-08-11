@@ -682,15 +682,27 @@ function FestaApp() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                {saveState === "saving"
-                  ? "Salvando…"
-                  : saveState === "saved"
-                    ? "Salvo na nuvem"
-                    : saveState === "error"
-                      ? "Erro ao salvar"
+              {loadFailed ? (
+                <span className="text-xs font-medium text-destructive">
+                  Somente leitura — falha ao carregar
+                </span>
+              ) : saveState === "error" ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setRetryToken((value) => value + 1)}
+                >
+                  Erro ao salvar · tentar de novo
+                </Button>
+              ) : (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  {saveState === "saving"
+                    ? "Salvando…"
+                    : saveState === "saved"
+                      ? `Salvo às ${savedAt}`
                       : ""}
-              </span>
+                </span>
+              )}
               <Button variant="ghost" size="icon" aria-label="Notificações" className="relative">
                 <Bell />
                 <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
