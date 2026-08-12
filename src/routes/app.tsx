@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MessagesView } from "@/components/messages-view";
 import { GuestReportDialog } from "@/components/guest-report";
@@ -8,10 +8,12 @@ import { TeamPanel } from "@/components/team-panel";
 import { useEventAccess, eventRoleLabel } from "@/lib/event-access";
 import { acceptMyInvites } from "@/lib/team.functions";
 import {
+  addGuestRow,
   loadFamilyInvites,
   loadMirellaState,
   saveFamilyInvite,
-  saveMirellaState,
+  saveTasks,
+  updateGuestFields,
   deleteGuest as deleteGuestRow,
   type FamilyInvite,
 } from "@/lib/mirella-store";
@@ -151,6 +153,7 @@ type Guest = {
   child: boolean;
   family: string;
   host: string;
+  updatedAt: string;
 };
 
 const hosts = ["William", "Késya", "Mirella"];
@@ -196,14 +199,24 @@ function FestaApp() {
   const [savedAt, setSavedAt] = useState<string>("");
   const [retryToken, setRetryToken] = useState(0);
   const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
+  const guestsRef = useRef<Guest[]>([]);
+  const guestVersions = useRef(new Map<number, string>());
+  const guestWriteQueues = useRef(new Map<number, Promise<void>>());
 
   useEffect(() => {
-    void loadFamilyInvites().then(setFamilyInvites);
-  }, []);
+    guestsRef.current = guests;
+  }, [guests]);
+
+  useEffect(() => {
+    if (!session.activeEventId) return;
+    void loadFamilyInvites(session.activeEventId).then(setFamilyInvites);
+  }, [session.activeEventId]);
 
   const setFamilyPhysical = (family: string, invite: FamilyInvite) => {
+    const eventId = session.activeEventId;
+    if (!eventId) return;
     setFamilyInvites((current) => ({ ...current, [family]: invite }));
-    void saveFamilyInvite(family, invite);
+    void saveFamilyInvite(eventId, family, invite);
   };
 
   useEffect(() => {
@@ -219,14 +232,16 @@ function FestaApp() {
   // Carga: só liberamos a gravação depois de uma leitura bem-sucedida do banco.
   // Se a leitura falhar, a tela fica somente leitura — nunca sobrescreve com estado vazio.
   useEffect(() => {
+    const eventId = session.activeEventId;
+    if (!eventId) return;
     let active = true;
-    loadMirellaState()
+    setLoaded(false);
+    setLoadFailed(false);
+    setGuests([]);
+    setTasks([]);
+    loadMirellaState(eventId)
       .then((state) => {
         if (!active) return;
-        if (!state) {
-          setLoadFailed(true);
-          return;
-        }
         setTasks((state.tasks ?? []) as Task[]);
         setGuests(
           (state.guests ?? []).map((guest) => ({
@@ -234,6 +249,8 @@ function FestaApp() {
             status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
           })) as Guest[],
         );
+        guestVersions.current = new Map(state.guests.map((guest) => [guest.id, guest.updatedAt]));
+        guestWriteQueues.current.clear();
         setLoadFailed(false);
         setLoaded(true);
       })
@@ -243,13 +260,14 @@ function FestaApp() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [session.activeEventId]);
 
   useEffect(() => {
-    if (!loaded || loadFailed) return;
+    const eventId = session.activeEventId;
+    if (!loaded || loadFailed || !eventId) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
-      saveMirellaState({ tasks, guests })
+      saveTasks(eventId, tasks)
         .then(() => {
           setSaveState("saved");
           setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
@@ -257,7 +275,7 @@ function FestaApp() {
         .catch(() => setSaveState("error"));
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [tasks, guests, loaded, loadFailed, retryToken]);
+  }, [tasks, loaded, loadFailed, retryToken, session.activeEventId]);
 
   // Avisa ao sair somente quando existe alteração pendente de gravação.
   useEffect(() => {
@@ -346,9 +364,47 @@ function FestaApp() {
     setTasks((current) => current.filter((task) => task.id !== id && task.parent !== id));
   };
 
+  const reloadGuests = async (eventId: string) => {
+    const state = await loadMirellaState(eventId);
+    const freshGuests = state.guests.map((guest) => ({
+      ...guest,
+      status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
+    })) as Guest[];
+    guestVersions.current = new Map(freshGuests.map((guest) => [guest.id, guest.updatedAt]));
+    setGuests(freshGuests);
+  };
+
+  const persistGuestPatch = (id: number, patch: Partial<Guest>) => {
+    const eventId = session.activeEventId;
+    const guest = guestsRef.current.find((item) => item.id === id);
+    if (!eventId || !guest || loadFailed) return;
+    setGuests((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    setSaveState("saving");
+    const previousWrite = guestWriteQueues.current.get(id) ?? Promise.resolve();
+    const nextWrite = previousWrite
+      .catch(() => undefined)
+      .then(async () => {
+        const expectedUpdatedAt = guestVersions.current.get(id);
+        const currentGuest = guestsRef.current.find((item) => item.id === id);
+        if (!expectedUpdatedAt || !currentGuest) throw new Error("CONFLICT");
+        const updatedAt = await updateGuestFields(eventId, id, patch, expectedUpdatedAt, currentGuest.name);
+        guestVersions.current.set(id, updatedAt);
+        setGuests((current) => current.map((item) => (item.id === id ? { ...item, updatedAt } : item)));
+        setSaveState("saved");
+        setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+      })
+      .catch(async () => {
+        setSaveState("error");
+        await reloadGuests(eventId).catch(() => setLoadFailed(true));
+      })
+      .finally(() => {
+        if (guestWriteQueues.current.get(id) === nextWrite) guestWriteQueues.current.delete(id);
+      });
+    guestWriteQueues.current.set(id, nextWrite);
+  };
+
   const changeGuestStatus = (id: number, status: GuestStatus) => {
-    setGuests((current) => {
-      const guest = current.find((item) => item.id === id);
+    const guest = guests.find((item) => item.id === id);
       if (
         guest &&
         guest.status !== status &&
@@ -364,37 +420,42 @@ function FestaApp() {
           },
         }).catch(() => undefined);
       }
-      return current.map((item) => (item.id === id ? { ...item, status } : item));
-    });
+    void persistGuestPatch(id, { status });
   };
 
   const updateGuest = (id: number, patch: Partial<Guest>) => {
-    setGuests((current) =>
-      current.map((guest) => (guest.id === id ? { ...guest, ...patch } : guest)),
-    );
+    void persistGuestPatch(id, patch);
   };
 
   const setFamilyHost = (family: string, host: string) => {
-    setGuests((current) =>
-      current.map((guest) => (guest.family === family ? { ...guest, host } : guest)),
-    );
+    for (const guest of guests.filter((item) => item.family === family)) {
+      void persistGuestPatch(guest.id, { host });
+    }
   };
 
   const deleteGuest = (id: number) => {
     const guest = guests.find((item) => item.id === id);
     if (!guest) return;
     if (!window.confirm(`Excluir ${guest.name} da lista de convidados?`)) return;
+    const eventId = session.activeEventId;
+    if (!eventId) return;
     setGuests((current) => current.filter((item) => item.id !== id));
-    void deleteGuestRow(id).catch(() => setSaveState("error"));
+    setSaveState("saving");
+    void deleteGuestRow(eventId, id)
+      .then(() => setSaveState("saved"))
+      .catch(() => {
+        setGuests((current) => [...current, guest].sort((a, b) => a.id - b.id));
+        setSaveState("error");
+      });
   };
 
   const addGuest = () => {
     const name = newGuest.trim();
     if (!name) return;
-    setGuests((current) => [
-      ...current,
-      {
-        id: Math.max(0, ...current.map((item) => item.id)) + 1,
+    const eventId = session.activeEventId;
+    if (!eventId) return;
+    const guest: Guest = {
+        id: Math.max(0, ...guests.map((item) => item.id)) + 1,
         name,
         status: "Aguardando",
         virtual: false,
@@ -405,8 +466,15 @@ function FestaApp() {
         child: false,
         family: "",
         host: "",
-      },
-    ]);
+        updatedAt: "",
+      };
+    setSaveState("saving");
+    void addGuestRow(eventId, guest)
+      .then((updatedAt) => {
+        setGuests((current) => [...current, { ...guest, updatedAt }]);
+        setSaveState("saved");
+      })
+      .catch(() => setSaveState("error"));
     setNewGuest("");
     setShowGuestForm(false);
   };

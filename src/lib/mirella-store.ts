@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { activeEventId } from "@/lib/active-event";
+import type { Database } from "@/integrations/supabase/types";
 
 export type StoredTask = {
   id: number;
@@ -26,12 +26,14 @@ export type StoredGuest = {
   family: string;
   host: string;
   deadline: string;
+  updatedAt: string;
 };
 
 export type MirellaState = { tasks: StoredTask[]; guests: StoredGuest[] };
 
-async function nameMap(table: "families" | "hosts") {
-  const { data } = await supabase.from(table).select("id, name").eq("event_id", activeEventId());
+async function nameMap(table: "families" | "hosts", eventId: string) {
+  const { data, error } = await supabase.from(table).select("id, name").eq("event_id", eventId);
+  if (error) throw error;
   const byId = new Map<string, string>();
   const byName = new Map<string, string>();
   for (const row of data ?? []) {
@@ -41,14 +43,15 @@ async function nameMap(table: "families" | "hosts") {
   return { byId, byName };
 }
 
-export async function loadMirellaState(): Promise<MirellaState | null> {
+export async function loadMirellaState(eventId: string): Promise<MirellaState> {
   const [families, hosts, guestsRes, tasksRes] = await Promise.all([
-    nameMap("families"),
-    nameMap("hosts"),
-    supabase.from("guests").select("*").eq("event_id", activeEventId()).order("legacy_id", { ascending: true }),
-    supabase.from("tasks").select("*").eq("event_id", activeEventId()).order("legacy_id", { ascending: true }),
+    nameMap("families", eventId),
+    nameMap("hosts", eventId),
+    supabase.from("guests").select("*").eq("event_id", eventId).order("legacy_id", { ascending: true }),
+    supabase.from("tasks").select("*").eq("event_id", eventId).order("legacy_id", { ascending: true }),
   ]);
-  if (guestsRes.error || tasksRes.error) return null;
+  if (guestsRes.error) throw guestsRes.error;
+  if (tasksRes.error) throw tasksRes.error;
 
   const guests: StoredGuest[] = (guestsRes.data ?? []).map((row) => ({
     id: row.legacy_id ?? 0,
@@ -64,6 +67,7 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
     deadline: row.rsvp_deadline ?? "",
     family: (row.family_id && families.byId.get(row.family_id)) || "",
     host: (row.host_id && hosts.byId.get(row.host_id)) || "",
+    updatedAt: row.updated_at,
   }));
 
   const tasks: StoredTask[] = (tasksRes.data ?? []).map((row) => ({
@@ -80,66 +84,18 @@ export async function loadMirellaState(): Promise<MirellaState | null> {
   return { tasks, guests };
 }
 
-async function ensureNames(table: "families" | "hosts", names: string[]) {
-  const existing = await nameMap(table);
+async function ensureNames(table: "families" | "hosts", names: string[], eventId: string) {
+  const existing = await nameMap(table, eventId);
   const missing = names.filter((name) => name && !existing.byName.has(name));
   if (missing.length) {
-    await supabase.from(table).upsert(missing.map((name) => ({ name, event_id: activeEventId() })), { onConflict: "event_id,name" });
-    return (await nameMap(table)).byName;
+    const { error } = await supabase.from(table).upsert(missing.map((name) => ({ name, event_id: eventId })), { onConflict: "event_id,name" });
+    if (error) throw error;
+    return (await nameMap(table, eventId)).byName;
   }
   return existing.byName;
 }
 
-export async function saveMirellaState(state: MirellaState) {
-  const { tasks, guests } = state;
-  if (!guests.length) return; // nunca sobrescreve com lista vazia
-
-  // Trava de segurança: bloqueia gravações que apagariam família/responsável em massa.
-  const { data: currentRows } = await supabase
-    .from("guests")
-    .select("legacy_id, family_id, host_id")
-    .eq("event_id", activeEventId());
-  if (currentRows?.length) {
-    const byLegacy = new Map(currentRows.map((row) => [row.legacy_id, row]));
-    let clearing = 0;
-    for (const guest of guests) {
-      const current = byLegacy.get(guest.id);
-      if (!current) continue;
-      if (current.family_id && !guest.family) clearing += 1;
-      if (current.host_id && !guest.host) clearing += 1;
-    }
-    if (clearing > 5) {
-      throw new Error(
-        `Gravação bloqueada: ${clearing} vínculos de família/responsável seriam apagados de uma vez.`,
-      );
-    }
-  }
-
-  const familyIds = await ensureNames("families", [...new Set(guests.map((guest) => guest.family))]);
-  const hostIds = await ensureNames("hosts", [...new Set(guests.map((guest) => guest.host))]);
-
-  const eventId = activeEventId();
-  const guestRows = guests.map((guest) => ({
-    event_id: eventId,
-    legacy_id: guest.id,
-    name: guest.name,
-    phone: guest.phone ?? null,
-    age: guest.age ?? null,
-    is_child: guest.child,
-    status: guest.status,
-    invite_virtual: guest.virtual,
-    invite_virtual_at: guest.virtualAt || null,
-    rsvp_deadline: guest.deadline || null,
-    invite_physical: guest.physical,
-    invite_personal: guest.personal,
-    is_primary: Boolean(guest.family) && guest.family === guest.name,
-    family_id: guest.family ? familyIds.get(guest.family) ?? null : null,
-    host_id: guest.host ? hostIds.get(guest.host) ?? null : null,
-  }));
-
-  const { error: guestError } = await supabase.from("guests").upsert(guestRows, { onConflict: "event_id,legacy_id" });
-  if (guestError) throw guestError;
-
+export async function saveTasks(eventId: string, tasks: StoredTask[]) {
   if (tasks.length) {
     const { error: taskError } = await supabase.from("tasks").upsert(
       tasks.map((task) => ({
@@ -164,22 +120,88 @@ export async function saveMirellaState(state: MirellaState) {
   }
 }
 
+export type GuestPatch = Partial<Omit<StoredGuest, "id" | "updatedAt">>;
+
+export async function updateGuestFields(
+  eventId: string,
+  legacyId: number,
+  patch: GuestPatch,
+  expectedUpdatedAt: string,
+  currentName: string,
+): Promise<string> {
+  const row: Database["public"]["Tables"]["guests"]["Update"] = {};
+  if (patch.name !== undefined) row.name = patch.name;
+  if (patch.phone !== undefined) row.phone = patch.phone || null;
+  if (patch.age !== undefined) row.age = patch.age ?? null;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.virtual !== undefined) row.invite_virtual = patch.virtual;
+  if (patch.virtualAt !== undefined) row.invite_virtual_at = patch.virtualAt || null;
+  if (patch.deadline !== undefined) row.rsvp_deadline = patch.deadline || null;
+  if (patch.physical !== undefined) row.invite_physical = patch.physical;
+  if (patch.personal !== undefined) row.invite_personal = patch.personal;
+  if (patch.child !== undefined) row.is_child = patch.child;
+
+  if (patch.family !== undefined) {
+    const families = await ensureNames("families", patch.family ? [patch.family] : [], eventId);
+    row.family_id = patch.family ? families.get(patch.family) ?? null : null;
+    row.is_primary = Boolean(patch.family) && patch.family === (patch.name ?? currentName);
+  }
+  if (patch.host !== undefined) {
+    const hosts = await ensureNames("hosts", patch.host ? [patch.host] : [], eventId);
+    row.host_id = patch.host ? hosts.get(patch.host) ?? null : null;
+  }
+  if (!Object.keys(row).length) return expectedUpdatedAt;
+
+  const { data, error } = await supabase
+    .from("guests")
+    .update(row)
+    .eq("event_id", eventId)
+    .eq("legacy_id", legacyId)
+    .eq("updated_at", expectedUpdatedAt)
+    .select("updated_at")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("CONFLICT");
+  return data.updated_at;
+}
+
+export async function addGuestRow(eventId: string, guest: StoredGuest): Promise<string> {
+  const { data, error } = await supabase
+    .from("guests")
+    .insert({
+      event_id: eventId,
+      legacy_id: guest.id,
+      name: guest.name,
+      status: guest.status,
+      invite_virtual: guest.virtual,
+      invite_physical: guest.physical,
+      invite_personal: guest.personal,
+      is_child: guest.child,
+      is_primary: false,
+    })
+    .select("updated_at")
+    .single();
+  if (error) throw error;
+  return data.updated_at;
+}
+
 export type FamilyInvite = { physical: boolean; physicalAt: string; virtual: boolean; virtualAt: string; deadline: string };
 
-export async function deleteGuest(legacyId: number) {
+export async function deleteGuest(eventId: string, legacyId: number) {
   const { error } = await supabase
     .from("guests")
     .delete()
-    .eq("event_id", activeEventId())
+    .eq("event_id", eventId)
     .eq("legacy_id", legacyId);
   if (error) throw error;
 }
 
-export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
-  const { data } = await supabase
+export async function loadFamilyInvites(eventId: string): Promise<Record<string, FamilyInvite>> {
+  const { data, error } = await supabase
     .from("families")
     .select("name, invite_physical, invite_physical_at, invite_virtual, invite_virtual_at, rsvp_deadline")
-    .eq("event_id", activeEventId());
+    .eq("event_id", eventId);
+  if (error) throw error;
   const map: Record<string, FamilyInvite> = {};
   for (const row of data ?? []) {
     map[row.name] = {
@@ -193,14 +215,14 @@ export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>>
   return map;
 }
 
-export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
+export async function saveFamilyInvite(eventId: string, name: string, invite: FamilyInvite) {
   if (!name) return;
-  await supabase
+  const { error } = await supabase
     .from("families")
     .upsert(
       {
         name,
-        event_id: activeEventId(),
+        event_id: eventId,
         invite_physical: invite.physical,
         invite_physical_at: invite.physicalAt || null,
         invite_virtual: invite.virtual,
@@ -209,4 +231,5 @@ export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
       },
       { onConflict: "event_id,name" },
     );
+  if (error) throw error;
 }

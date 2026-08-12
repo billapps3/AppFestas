@@ -244,6 +244,85 @@ export type Database = {
           },
         ]
       }
+      guest_link_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          event_id: string
+          guest_id: string
+          guest_name: string
+          id: string
+          new_family_id: string | null
+          new_host_id: string | null
+          old_family_id: string | null
+          old_host_id: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          event_id: string
+          guest_id: string
+          guest_name: string
+          id?: string
+          new_family_id?: string | null
+          new_host_id?: string | null
+          old_family_id?: string | null
+          old_host_id?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          event_id?: string
+          guest_id?: string
+          guest_name?: string
+          id?: string
+          new_family_id?: string | null
+          new_host_id?: string | null
+          old_family_id?: string | null
+          old_host_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_link_audit_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_link_snapshots: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          links: Json
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          links: Json
+          snapshot_date?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          links?: Json
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_link_snapshots_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           age: number | null
