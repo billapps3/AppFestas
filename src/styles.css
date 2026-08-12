@@ -109,6 +109,9 @@
   .status-confirmed { background: oklch(0.93 0.06 150); color: oklch(0.44 0.11 150); border-color: oklch(0.8 0.09 150); }
   .status-waiting { background: oklch(0.94 0.07 65); color: oklch(0.5 0.13 55); border-color: oklch(0.82 0.11 65); }
   .status-declined { background: oklch(0.94 0.05 22); color: oklch(0.5 0.17 25); border-color: oklch(0.82 0.1 22); }
+  .dot-confirmed { background: oklch(0.55 0.14 150); }
+  .dot-waiting { background: oklch(0.62 0.16 55); }
+  .dot-declined { background: oklch(0.58 0.19 25); }
   .metric-rose { background: oklch(0.93 0.055 15); color: oklch(0.55 0.14 14); }
   .metric-gold { background: oklch(0.94 0.08 82); color: oklch(0.52 0.1 65); }
   .metric-sage { background: oklch(0.91 0.055 145); color: oklch(0.46 0.09 145); }
