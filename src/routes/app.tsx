@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MessagesView } from "@/components/messages-view";
 import { GuestReportDialog } from "@/components/guest-report";
@@ -199,6 +199,13 @@ function FestaApp() {
   const [savedAt, setSavedAt] = useState<string>("");
   const [retryToken, setRetryToken] = useState(0);
   const [familyInvites, setFamilyInvites] = useState<Record<string, FamilyInvite>>({});
+  const guestsRef = useRef<Guest[]>([]);
+  const guestVersions = useRef(new Map<number, string>());
+  const guestWriteQueues = useRef(new Map<number, Promise<void>>());
+
+  useEffect(() => {
+    guestsRef.current = guests;
+  }, [guests]);
 
   useEffect(() => {
     if (!session.activeEventId) return;
@@ -242,6 +249,8 @@ function FestaApp() {
             status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
           })) as Guest[],
         );
+        guestVersions.current = new Map(state.guests.map((guest) => [guest.id, guest.updatedAt]));
+        guestWriteQueues.current.clear();
         setLoadFailed(false);
         setLoaded(true);
       })
@@ -355,22 +364,43 @@ function FestaApp() {
     setTasks((current) => current.filter((task) => task.id !== id && task.parent !== id));
   };
 
-  const persistGuestPatch = async (id: number, patch: Partial<Guest>) => {
+  const reloadGuests = async (eventId: string) => {
+    const state = await loadMirellaState(eventId);
+    const freshGuests = state.guests.map((guest) => ({
+      ...guest,
+      status: guest.status === "Não confirmado" ? "Aguardando" : guest.status,
+    })) as Guest[];
+    guestVersions.current = new Map(freshGuests.map((guest) => [guest.id, guest.updatedAt]));
+    setGuests(freshGuests);
+  };
+
+  const persistGuestPatch = (id: number, patch: Partial<Guest>) => {
     const eventId = session.activeEventId;
-    const guest = guests.find((item) => item.id === id);
+    const guest = guestsRef.current.find((item) => item.id === id);
     if (!eventId || !guest || loadFailed) return;
-    const previous = guest;
     setGuests((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     setSaveState("saving");
-    try {
-      const updatedAt = await updateGuestFields(eventId, id, patch, guest.updatedAt, guest.name);
-      setGuests((current) => current.map((item) => (item.id === id ? { ...item, updatedAt } : item)));
-      setSaveState("saved");
-      setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-    } catch {
-      setGuests((current) => current.map((item) => (item.id === id ? previous : item)));
-      setSaveState("error");
-    }
+    const previousWrite = guestWriteQueues.current.get(id) ?? Promise.resolve();
+    const nextWrite = previousWrite
+      .catch(() => undefined)
+      .then(async () => {
+        const expectedUpdatedAt = guestVersions.current.get(id);
+        const currentGuest = guestsRef.current.find((item) => item.id === id);
+        if (!expectedUpdatedAt || !currentGuest) throw new Error("CONFLICT");
+        const updatedAt = await updateGuestFields(eventId, id, patch, expectedUpdatedAt, currentGuest.name);
+        guestVersions.current.set(id, updatedAt);
+        setGuests((current) => current.map((item) => (item.id === id ? { ...item, updatedAt } : item)));
+        setSaveState("saved");
+        setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+      })
+      .catch(async () => {
+        setSaveState("error");
+        await reloadGuests(eventId).catch(() => setLoadFailed(true));
+      })
+      .finally(() => {
+        if (guestWriteQueues.current.get(id) === nextWrite) guestWriteQueues.current.delete(id);
+      });
+    guestWriteQueues.current.set(id, nextWrite);
   };
 
   const changeGuestStatus = (id: number, status: GuestStatus) => {
