@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { activeEventId } from "@/lib/active-event";
 
 export type StoredTask = {
@@ -128,7 +129,7 @@ export async function updateGuestFields(
   patch: GuestPatch,
   expectedUpdatedAt: string,
 ): Promise<string> {
-  const row: Record<string, string | number | boolean | null> = {};
+  const row: Database["public"]["Tables"]["guests"]["Update"] = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.phone !== undefined) row.phone = patch.phone || null;
   if (patch.age !== undefined) row.age = patch.age ?? null;
