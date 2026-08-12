@@ -981,9 +981,9 @@ function Overview({
               </div>
             </div>
             <div className="space-y-3 text-xs">
-              <Legend color="bg-primary" label="Confirmados" value={confirmed} />
-              <Legend color="bg-accent" label="Aguardando" value={waiting} />
-              <Legend color="bg-destructive/60" label="Declinados" value={declined} />
+              <Legend color="dot-confirmed" label="Confirmados" value={confirmed} />
+              <Legend color="dot-waiting" label="Aguardando" value={waiting} />
+              <Legend color="dot-declined" label="Declinados" value={declined} />
               <Legend color="bg-muted-foreground/30" label="Crianças" value={children} />
             </div>
           </div>
