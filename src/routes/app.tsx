@@ -202,12 +202,14 @@ function FestaApp() {
 
   useEffect(() => {
     if (!session.activeEventId) return;
-    void loadFamilyInvites().then(setFamilyInvites);
+    void loadFamilyInvites(session.activeEventId).then(setFamilyInvites);
   }, [session.activeEventId]);
 
   const setFamilyPhysical = (family: string, invite: FamilyInvite) => {
+    const eventId = session.activeEventId;
+    if (!eventId) return;
     setFamilyInvites((current) => ({ ...current, [family]: invite }));
-    void saveFamilyInvite(family, invite);
+    void saveFamilyInvite(eventId, family, invite);
   };
 
   useEffect(() => {
@@ -361,7 +363,7 @@ function FestaApp() {
     setGuests((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     setSaveState("saving");
     try {
-      const updatedAt = await updateGuestFields(eventId, id, patch, guest.updatedAt);
+      const updatedAt = await updateGuestFields(eventId, id, patch, guest.updatedAt, guest.name);
       setGuests((current) => current.map((item) => (item.id === id ? { ...item, updatedAt } : item)));
       setSaveState("saved");
       setSavedAt(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));

@@ -128,6 +128,7 @@ export async function updateGuestFields(
   legacyId: number,
   patch: GuestPatch,
   expectedUpdatedAt: string,
+  currentName: string,
 ): Promise<string> {
   const row: Database["public"]["Tables"]["guests"]["Update"] = {};
   if (patch.name !== undefined) row.name = patch.name;
@@ -144,7 +145,7 @@ export async function updateGuestFields(
   if (patch.family !== undefined) {
     const families = await ensureNames("families", patch.family ? [patch.family] : [], eventId);
     row.family_id = patch.family ? families.get(patch.family) ?? null : null;
-    row.is_primary = Boolean(patch.family) && patch.family === patch.name;
+    row.is_primary = Boolean(patch.family) && patch.family === (patch.name ?? currentName);
   }
   if (patch.host !== undefined) {
     const hosts = await ensureNames("hosts", patch.host ? [patch.host] : [], eventId);
@@ -196,11 +197,11 @@ export async function deleteGuest(eventId: string, legacyId: number) {
   if (error) throw error;
 }
 
-export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>> {
+export async function loadFamilyInvites(eventId: string): Promise<Record<string, FamilyInvite>> {
   const { data } = await supabase
     .from("families")
     .select("name, invite_physical, invite_physical_at, invite_virtual, invite_virtual_at, rsvp_deadline")
-    .eq("event_id", activeEventId());
+    .eq("event_id", eventId);
   const map: Record<string, FamilyInvite> = {};
   for (const row of data ?? []) {
     map[row.name] = {
@@ -214,14 +215,14 @@ export async function loadFamilyInvites(): Promise<Record<string, FamilyInvite>>
   return map;
 }
 
-export async function saveFamilyInvite(name: string, invite: FamilyInvite) {
+export async function saveFamilyInvite(eventId: string, name: string, invite: FamilyInvite) {
   if (!name) return;
   await supabase
     .from("families")
     .upsert(
       {
         name,
-        event_id: activeEventId(),
+        event_id: eventId,
         invite_physical: invite.physical,
         invite_physical_at: invite.physicalAt || null,
         invite_virtual: invite.virtual,
