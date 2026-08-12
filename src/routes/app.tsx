@@ -370,7 +370,6 @@ function FestaApp() {
     } catch {
       setGuests((current) => current.map((item) => (item.id === id ? previous : item)));
       setSaveState("error");
-      setLoadFailed(true);
     }
   };
 
@@ -408,10 +407,16 @@ function FestaApp() {
     const guest = guests.find((item) => item.id === id);
     if (!guest) return;
     if (!window.confirm(`Excluir ${guest.name} da lista de convidados?`)) return;
-    setGuests((current) => current.filter((item) => item.id !== id));
     const eventId = session.activeEventId;
     if (!eventId) return;
-    void deleteGuestRow(eventId, id).catch(() => setSaveState("error"));
+    setGuests((current) => current.filter((item) => item.id !== id));
+    setSaveState("saving");
+    void deleteGuestRow(eventId, id)
+      .then(() => setSaveState("saved"))
+      .catch(() => {
+        setGuests((current) => [...current, guest].sort((a, b) => a.id - b.id));
+        setSaveState("error");
+      });
   };
 
   const addGuest = () => {

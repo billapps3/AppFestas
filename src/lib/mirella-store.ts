@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { activeEventId } from "@/lib/active-event";
 
 export type StoredTask = {
   id: number;
@@ -198,10 +197,11 @@ export async function deleteGuest(eventId: string, legacyId: number) {
 }
 
 export async function loadFamilyInvites(eventId: string): Promise<Record<string, FamilyInvite>> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("families")
     .select("name, invite_physical, invite_physical_at, invite_virtual, invite_virtual_at, rsvp_deadline")
     .eq("event_id", eventId);
+  if (error) throw error;
   const map: Record<string, FamilyInvite> = {};
   for (const row of data ?? []) {
     map[row.name] = {
@@ -217,7 +217,7 @@ export async function loadFamilyInvites(eventId: string): Promise<Record<string,
 
 export async function saveFamilyInvite(eventId: string, name: string, invite: FamilyInvite) {
   if (!name) return;
-  await supabase
+  const { error } = await supabase
     .from("families")
     .upsert(
       {
@@ -231,4 +231,5 @@ export async function saveFamilyInvite(eventId: string, name: string, invite: Fa
       },
       { onConflict: "event_id,name" },
     );
+  if (error) throw error;
 }
