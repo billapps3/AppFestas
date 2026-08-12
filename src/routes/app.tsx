@@ -981,9 +981,9 @@ function Overview({
               </div>
             </div>
             <div className="space-y-3 text-xs">
-              <Legend color="bg-primary" label="Confirmados" value={confirmed} />
-              <Legend color="bg-accent" label="Aguardando" value={waiting} />
-              <Legend color="bg-destructive/60" label="Declinados" value={declined} />
+              <Legend color="dot-confirmed" label="Confirmados" value={confirmed} />
+              <Legend color="dot-waiting" label="Aguardando" value={waiting} />
+              <Legend color="dot-declined" label="Declinados" value={declined} />
               <Legend color="bg-muted-foreground/30" label="Crianças" value={children} />
             </div>
           </div>
@@ -2433,7 +2433,7 @@ function GuestStatusSelect({
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-      className={`w-full rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[130px] ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+      className={`w-full rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[130px] ${guest.status === "Confirmado" ? "status-confirmed" : guest.status === "Aguardando" ? "status-waiting" : "status-declined"}`}
     >
       <option>Confirmado</option>
       <option>Aguardando</option>

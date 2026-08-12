@@ -34,7 +34,7 @@ const soft = "#7c7185";
 const line = "#e7dfe9";
 const accent = "#b3446b";
 const mark = { Confirmado: "✓", Aguardando: "•", Declinado: "✕" } as const;
-const markColor = { Confirmado: "#1f7a52", Aguardando: "#8a7d19", Declinado: "#b0322f" } as const;
+const markColor = { Confirmado: "#1f7a52", Aguardando: "#c2620c", Declinado: "#c0322f" } as const;
 
 function buildSections(guests: ReportGuest[], hosts: string[]) {
   return [...hosts, "Sem responsável"]
