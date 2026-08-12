@@ -2433,7 +2433,7 @@ function GuestStatusSelect({
       aria-label={`Confirmação de ${guest.name}`}
       value={guest.status}
       onChange={(event) => onStatus(guest.id, event.target.value as GuestStatus)}
-      className={`w-full rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[130px] ${guest.status === "Confirmado" ? "border-primary/20 bg-primary/10 text-primary" : guest.status === "Aguardando" ? "border-accent bg-accent text-accent-foreground" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+      className={`w-full rounded-md border px-2 py-1.5 text-[11px] font-medium outline-none lg:w-[130px] ${guest.status === "Confirmado" ? "status-confirmed" : guest.status === "Aguardando" ? "status-waiting" : "status-declined"}`}
     >
       <option>Confirmado</option>
       <option>Aguardando</option>
