@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles } from "lucide-react";
@@ -73,20 +72,6 @@ function AuthPage() {
     }
   };
 
-  const google = async () => {
-    setMessage("");
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/auth`,
-    });
-    if (result.error) {
-      setMessage("Não foi possível entrar com o Google.");
-      return;
-    }
-    if (result.redirected) return;
-    const authenticated = await openAppWithVerifiedSession();
-    if (!authenticated) setMessage("O Google autorizou o acesso, mas a sessão não foi concluída. Tente novamente.");
-  };
-
   return (
     <div className="grid min-h-svh place-items-center bg-muted/40 px-5 py-12">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-7 shadow-sm">
@@ -107,7 +92,6 @@ function AuthPage() {
             <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" className="mt-1 h-10 text-sm" />
           </label>
           <Button className="w-full" disabled={busy || !email || !password} onClick={submit}>{mode === "entrar" ? "Entrar" : "Criar acesso"}</Button>
-          <Button variant="outline" className="w-full" onClick={google}>Entrar com Google</Button>
         </div>
 
         {message && <p className="mt-4 text-xs text-primary">{message}</p>}
