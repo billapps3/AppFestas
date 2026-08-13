@@ -72,6 +72,15 @@ function AuthPage() {
     }
   };
 
+  const google = async () => {
+    setMessage("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth` },
+    });
+    if (error) setMessage("Não foi possível entrar com o Google.");
+  };
+
   return (
     <div className="grid min-h-svh place-items-center bg-muted/40 px-5 py-12">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-7 shadow-sm">
@@ -92,6 +101,7 @@ function AuthPage() {
             <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" className="mt-1 h-10 text-sm" />
           </label>
           <Button className="w-full" disabled={busy || !email || !password} onClick={submit}>{mode === "entrar" ? "Entrar" : "Criar acesso"}</Button>
+          <Button variant="outline" className="w-full" onClick={google}>Entrar com Google</Button>
         </div>
 
         {message && <p className="mt-4 text-xs text-primary">{message}</p>}
