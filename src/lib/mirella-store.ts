@@ -96,28 +96,31 @@ async function ensureNames(table: "families" | "hosts", names: string[], eventId
 }
 
 export async function saveTasks(eventId: string, tasks: StoredTask[]) {
-  if (tasks.length) {
-    const { error: taskError } = await supabase.from("tasks").upsert(
-      tasks.map((task) => ({
-        event_id: eventId,
-        legacy_id: task.id,
-        name: task.name,
-        area: task.area,
-        owner: task.owner,
-        due: task.due,
-        status: task.status,
-        priority: task.priority,
-        parent_legacy_id: task.parent ?? null,
-      })),
-      { onConflict: "event_id,legacy_id" },
-    );
-    if (taskError) throw taskError;
-    await supabase
-      .from("tasks")
-      .delete()
-      .eq("event_id", eventId)
-      .not("legacy_id", "in", `(${tasks.map((task) => task.id).join(",")})`);
-  }
+  if (!tasks.length) return;
+  const { error } = await supabase.from("tasks").upsert(
+    tasks.map((task) => ({
+      event_id: eventId,
+      legacy_id: task.id,
+      name: task.name,
+      area: task.area,
+      owner: task.owner,
+      due: task.due,
+      status: task.status,
+      priority: task.priority,
+      parent_legacy_id: task.parent ?? null,
+    })),
+    { onConflict: "event_id,legacy_id" },
+  );
+  if (error) throw error;
+}
+
+export async function deleteTaskRow(eventId: string, legacyId: number) {
+  const { error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("legacy_id", legacyId);
+  if (error) throw error;
 }
 
 export type GuestPatch = Partial<Omit<StoredGuest, "id" | "updatedAt">>;

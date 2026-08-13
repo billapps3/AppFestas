@@ -13,6 +13,7 @@ import {
   loadMirellaState,
   saveFamilyInvite,
   saveTasks,
+  deleteTaskRow,
   updateGuestFields,
   deleteGuest as deleteGuestRow,
   type FamilyInvite,
@@ -361,7 +362,14 @@ function FestaApp() {
   };
 
   const deleteTask = (id: number) => {
+    const eventId = session.activeEventId;
+    if (!eventId) return;
+    const toDelete = tasks.filter((task) => task.id === id || task.parent === id);
     setTasks((current) => current.filter((task) => task.id !== id && task.parent !== id));
+    setSaveState("saving");
+    Promise.all(toDelete.map((task) => deleteTaskRow(eventId, task.id)))
+      .then(() => setSaveState("saved"))
+      .catch(() => setSaveState("error"));
   };
 
   const reloadGuests = async (eventId: string) => {
