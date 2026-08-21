@@ -120,6 +120,7 @@ export function GuestReportDialog({
 }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<"pdf" | "jpg" | "share" | null>(null);
+  const [error, setError] = useState("");
   const canShareFiles =
     typeof navigator !== "undefined" &&
     typeof navigator.share === "function" &&
@@ -157,8 +158,23 @@ export function GuestReportDialog({
 
   const slug = eventName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string) =>
+    new Promise<T>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error(`Tempo esgotado (${label})`)), ms);
+      promise.then(
+        (value) => {
+          window.clearTimeout(timer);
+          resolve(value);
+        },
+        (err) => {
+          window.clearTimeout(timer);
+          reject(err);
+        },
+      );
+    });
+
   const buildJpgCanvas = async () => {
-    const png = await capture();
+    const png = await withTimeout(capture(), 20000, "gerando imagem");
     const image = new Image();
     image.src = png;
     await image.decode();
@@ -183,9 +199,12 @@ export function GuestReportDialog({
 
   const exportJpg = async () => {
     setBusy("jpg");
+    setError("");
     try {
       const canvas = await buildJpgCanvas();
       download(canvas.toDataURL("image/jpeg", 0.94), `convidados-${slug}.jpg`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível gerar o JPG.");
     } finally {
       setBusy(null);
     }
@@ -193,20 +212,27 @@ export function GuestReportDialog({
 
   const shareReport = async () => {
     setBusy("share");
+    setError("");
     try {
       const canvas = await buildJpgCanvas();
       const blob = await canvasToBlob(canvas);
       const file = new File([blob], `convidados-${slug}.jpg`, { type: "image/jpeg" });
       if (!navigator.canShare({ files: [file] })) {
         download(canvas.toDataURL("image/jpeg", 0.94), `convidados-${slug}.jpg`);
+        setError("Este navegador não permite compartilhar arquivos direto — baixei o JPG em vez disso.");
         return;
       }
-      await navigator.share({
-        files: [file],
-        title: `Relatório de convidados — ${eventName}`,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") return;
+      await withTimeout(
+        navigator.share({
+          files: [file],
+          title: `Relatório de convidados — ${eventName}`,
+        }),
+        60000,
+        "abrindo o menu de compartilhar",
+      );
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(err instanceof Error ? `Não foi possível compartilhar: ${err.message}` : "Não foi possível compartilhar.");
     } finally {
       setBusy(null);
     }
@@ -214,8 +240,9 @@ export function GuestReportDialog({
 
   const exportPdf = async () => {
     setBusy("pdf");
+    setError("");
     try {
-      const png = await capture();
+      const png = await withTimeout(capture(), 20000, "gerando imagem");
       const image = new Image();
       image.src = png;
       await image.decode();
@@ -252,6 +279,8 @@ export function GuestReportDialog({
         page += 1;
       }
       pdf.save(`convidados-${slug}.pdf`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível gerar o PDF.");
     } finally {
       setBusy(null);
     }
@@ -305,6 +334,7 @@ export function GuestReportDialog({
               Baixar JPG
             </Button>
           </div>
+          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </DialogHeader>
 
         <div className="max-h-[68vh] overflow-auto bg-muted/40 p-3 sm:p-4">
