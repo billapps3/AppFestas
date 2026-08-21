@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FileDown, Image as ImageIcon, Loader2 } from "lucide-react";
+import { FileDown, Image as ImageIcon, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -119,7 +119,11 @@ export function GuestReportDialog({
   eventDate,
 }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null);
-  const [busy, setBusy] = useState<"pdf" | "jpg" | null>(null);
+  const [busy, setBusy] = useState<"pdf" | "jpg" | "share" | null>(null);
+  const canShareFiles =
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function";
 
   const sections = buildSections(guests, hosts);
   const children = guests.filter((guest) => guest.child).length;
@@ -153,21 +157,56 @@ export function GuestReportDialog({
 
   const slug = eventName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+  const buildJpgCanvas = async () => {
+    const png = await capture();
+    const image = new Image();
+    image.src = png;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0);
+    return canvas;
+  };
+
+  const canvasToBlob = (canvas: HTMLCanvasElement) =>
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Falha ao gerar imagem"))),
+        "image/jpeg",
+        0.94,
+      );
+    });
+
   const exportJpg = async () => {
     setBusy("jpg");
     try {
-      const png = await capture();
-      const image = new Image();
-      image.src = png;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0);
+      const canvas = await buildJpgCanvas();
       download(canvas.toDataURL("image/jpeg", 0.94), `convidados-${slug}.jpg`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shareReport = async () => {
+    setBusy("share");
+    try {
+      const canvas = await buildJpgCanvas();
+      const blob = await canvasToBlob(canvas);
+      const file = new File([blob], `convidados-${slug}.jpg`, { type: "image/jpeg" });
+      if (!navigator.canShare({ files: [file] })) {
+        download(canvas.toDataURL("image/jpeg", 0.94), `convidados-${slug}.jpg`);
+        return;
+      }
+      await navigator.share({
+        files: [file],
+        title: `Relatório de convidados — ${eventName}`,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
     } finally {
       setBusy(null);
     }
@@ -227,7 +266,23 @@ export function GuestReportDialog({
             Números no topo e a lista consolidada por responsável e por família.
           </DialogDescription>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" className="gap-1.5" disabled={busy !== null} onClick={() => void exportPdf()}>
+            {canShareFiles && (
+              <Button size="sm" className="gap-1.5" disabled={busy !== null} onClick={() => void shareReport()}>
+                {busy === "share" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Share2 className="size-4" />
+                )}
+                Compartilhar
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={canShareFiles ? "outline" : "default"}
+              className="gap-1.5"
+              disabled={busy !== null}
+              onClick={() => void exportPdf()}
+            >
               {busy === "pdf" ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
