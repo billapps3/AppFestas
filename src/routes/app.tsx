@@ -192,7 +192,10 @@ function FestaApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [newGuest, setNewGuest] = useState("");
+  const [newGuestFamily, setNewGuestFamily] = useState("");
+  const [newGuestHost, setNewGuestHost] = useState("");
   const [hostFilter, setHostFilter] = useState("Todos");
+  const [statusFilter, setStatusFilter] = useState<"Todos" | GuestStatus>("Todos");
   const [daysLeft, setDaysLeft] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -330,9 +333,10 @@ function FestaApp() {
         (guest) =>
           guest.name.toLowerCase().includes(search.toLowerCase()) &&
           (hostFilter === "Todos" ||
-            (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)),
+            (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)) &&
+          (statusFilter === "Todos" || guest.status === statusFilter),
       ),
-    [guests, search, hostFilter],
+    [guests, search, hostFilter, statusFilter],
   );
 
   const changeTaskStatus = (id: number) => {
@@ -486,8 +490,10 @@ function FestaApp() {
   };
 
   const addGuest = () => {
-    addGuestNamed(newGuest);
+    addGuestNamed(newGuest, { family: newGuestFamily, host: newGuestHost });
     setNewGuest("");
+    setNewGuestFamily("");
+    setNewGuestHost("");
     setShowGuestForm(false);
   };
 
@@ -731,10 +737,16 @@ function FestaApp() {
               setSearch={setSearch}
               hostFilter={hostFilter}
               setHostFilter={setHostFilter}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
               showForm={showGuestForm}
               setShowForm={setShowGuestForm}
               newGuest={newGuest}
               setNewGuest={setNewGuest}
+              newGuestFamily={newGuestFamily}
+              setNewGuestFamily={setNewGuestFamily}
+              newGuestHost={newGuestHost}
+              setNewGuestHost={setNewGuestHost}
               addGuest={addGuest}
               onAddFamilyMember={addGuestNamed}
               onStatus={changeGuestStatus}
@@ -1836,10 +1848,16 @@ type GuestsViewProps = {
   setSearch: (value: string) => void;
   hostFilter: string;
   setHostFilter: (value: string) => void;
+  statusFilter: "Todos" | GuestStatus;
+  setStatusFilter: (value: "Todos" | GuestStatus) => void;
   showForm: boolean;
   setShowForm: (value: boolean) => void;
   newGuest: string;
   setNewGuest: (value: string) => void;
+  newGuestFamily: string;
+  setNewGuestFamily: (value: string) => void;
+  newGuestHost: string;
+  setNewGuestHost: (value: string) => void;
   addGuest: () => void;
   onAddFamilyMember: (name: string, opts?: { family?: string; host?: string }) => void;
   onStatus: (id: number, status: GuestStatus) => void;
@@ -1857,10 +1875,16 @@ function GuestsView({
   setSearch,
   hostFilter,
   setHostFilter,
+  statusFilter,
+  setStatusFilter,
   showForm,
   setShowForm,
   newGuest,
   setNewGuest,
+  newGuestFamily,
+  setNewGuestFamily,
+  newGuestHost,
+  setNewGuestHost,
   addGuest,
   onAddFamilyMember,
   onStatus,
@@ -1972,14 +1996,49 @@ function GuestsView({
         eventDate="02/10/2026"
       />
       {showForm && (
-        <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row">
-          <Input
-            autoFocus
-            value={newGuest}
-            onChange={(event) => setNewGuest(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && addGuest()}
-            placeholder="Nome do convidado"
-          />
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <label className="flex-1 text-[11px] text-muted-foreground sm:min-w-[180px]">
+            Nome
+            <Input
+              autoFocus
+              value={newGuest}
+              onChange={(event) => setNewGuest(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && addGuest()}
+              placeholder="Nome do convidado"
+              className="mt-1"
+            />
+          </label>
+          <label className="flex-1 text-[11px] text-muted-foreground sm:min-w-[180px]">
+            Família (opcional)
+            <Input
+              list="new-guest-families"
+              value={newGuestFamily}
+              onChange={(event) => setNewGuestFamily(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && addGuest()}
+              placeholder="Ex.: Mazinho"
+              className="mt-1"
+            />
+            <datalist id="new-guest-families">
+              {familyOptions.map((family) => (
+                <option key={family} value={family} />
+              ))}
+            </datalist>
+          </label>
+          <label className="text-[11px] text-muted-foreground sm:w-[170px]">
+            Responsável
+            <select
+              value={newGuestHost}
+              onChange={(event) => setNewGuestHost(event.target.value)}
+              className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
+            >
+              <option value="">Escolher responsável</option>
+              {hosts.map((host) => (
+                <option key={host} value={host}>
+                  {host}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button onClick={addGuest}>Adicionar</Button>
         </div>
       )}
@@ -1992,17 +2051,30 @@ function GuestsView({
         ))}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex flex-wrap gap-2">
-          {["Todos", ...hosts, "Sem responsável"].map((option) => (
-            <button
-              key={option}
-              onClick={() => setHostFilter(option)}
-              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${hostFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
-            >
-              {option}
-            </button>
-          ))}
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {["Todos", ...hosts, "Sem responsável"].map((option) => (
+              <button
+                key={option}
+                onClick={() => setHostFilter(option)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${hostFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["Todos", "Confirmado", "Aguardando", "Declinado"] as const).map((option) => (
+              <button
+                key={option}
+                onClick={() => setStatusFilter(option)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${statusFilter === option ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
