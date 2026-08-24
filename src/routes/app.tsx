@@ -327,16 +327,19 @@ function FestaApp() {
       }));
     return [...families, ...individuals].sort((a, b) => a.deadline.localeCompare(b.deadline));
   }, [familyInvites, guests]);
+  // Status is deliberately left out here: it only hides individual rows inside
+  // GuestsView, never the family/host groups themselves — otherwise filtering to
+  // "Confirmado" would hide the "add person" control for any family with nobody
+  // confirmed yet.
   const filteredGuests = useMemo(
     () =>
       guests.filter(
         (guest) =>
           guest.name.toLowerCase().includes(search.toLowerCase()) &&
           (hostFilter === "Todos" ||
-            (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)) &&
-          (statusFilter === "Todos" || guest.status === statusFilter),
+            (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)),
       ),
-    [guests, search, hostFilter, statusFilter],
+    [guests, search, hostFilter],
   );
 
   const changeTaskStatus = (id: number) => {
@@ -490,7 +493,8 @@ function FestaApp() {
   };
 
   const addGuest = () => {
-    addGuestNamed(newGuest, { family: newGuestFamily, host: newGuestHost });
+    const family = newGuestFamily === "__self" ? newGuest.trim() : newGuestFamily;
+    addGuestNamed(newGuest, { family, host: newGuestHost });
     setNewGuest("");
     setNewGuestFamily("");
     setNewGuestHost("");
@@ -1938,6 +1942,10 @@ function GuestsView({
       .filter((section) => section.people.length > 0);
   }, [guests]);
 
+  // Só esconde a linha da pessoa — o card da família/grupo e o botão de
+  // adicionar continuam visíveis mesmo quando ninguém ali bate com o filtro.
+  const matchesStatus = (guest: Guest) => statusFilter === "Todos" || guest.status === statusFilter;
+
   const children = allGuests.filter((guest) => guest.child).length;
   const declined = allGuests.filter((guest) => guest.status === "Declinado").length;
   const stats = [
@@ -2009,20 +2017,20 @@ function GuestsView({
             />
           </label>
           <label className="flex-1 text-[11px] text-muted-foreground sm:min-w-[180px]">
-            Família (opcional)
-            <Input
-              list="new-guest-families"
+            Família
+            <select
               value={newGuestFamily}
               onChange={(event) => setNewGuestFamily(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && addGuest()}
-              placeholder="Ex.: Mazinho"
-              className="mt-1"
-            />
-            <datalist id="new-guest-families">
+              className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
+            >
+              <option value="">Sem família</option>
+              <option value="__self">Tornar principal de nova família</option>
               {familyOptions.map((family) => (
-                <option key={family} value={family} />
+                <option key={family} value={family}>
+                  {family}
+                </option>
               ))}
-            </datalist>
+            </select>
           </label>
           <label className="text-[11px] text-muted-foreground sm:w-[170px]">
             Responsável
@@ -2114,6 +2122,8 @@ function GuestsView({
 
           <div className="space-y-4 p-4 sm:p-5">
             {section.families.map(({ family, principal, members }) => {
+              const visiblePrincipal = principal && matchesStatus(principal) ? principal : undefined;
+              const visibleMembers = members.filter(matchesStatus);
               const invite = familyInvites[family];
               const isGroup = isGroupFamily(family);
               const waiting = [principal, ...members].filter(
@@ -2181,9 +2191,9 @@ function GuestsView({
                     </div>
                   </div>
                   <div className="divide-y divide-border">
-                    {principal && (
+                    {visiblePrincipal && (
                       <GuestRow
-                        guest={principal}
+                        guest={visiblePrincipal}
                         isPrincipal={!isGroup}
                         inFamily={!isGroup}
                         families={familyOptions}
@@ -2192,7 +2202,7 @@ function GuestsView({
                         onDelete={onDelete}
                       />
                     )}
-                    {members.map((guest) => (
+                    {visibleMembers.map((guest) => (
                       <GuestRow
                         key={guest.id}
                         guest={guest}
@@ -2203,6 +2213,11 @@ function GuestsView({
                         onDelete={onDelete}
                       />
                     ))}
+                    {statusFilter !== "Todos" && !visiblePrincipal && visibleMembers.length === 0 && (
+                      <div className="p-3 text-[11px] text-muted-foreground">
+                        Ninguém aqui está "{statusFilter}" no momento.
+                      </div>
+                    )}
                     <AddFamilyMemberRow
                       family={family}
                       host={section.host === "Sem responsável" ? "" : section.host}
@@ -2219,7 +2234,7 @@ function GuestsView({
                   Convidados individuais
                 </div>
                 <div className="divide-y divide-border">
-                  {section.singles.map((guest) => (
+                  {section.singles.filter(matchesStatus).map((guest) => (
                     <GuestRow
                       key={guest.id}
                       guest={guest}
