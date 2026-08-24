@@ -169,6 +169,8 @@ export async function updateGuestFields(
 }
 
 export async function addGuestRow(eventId: string, guest: StoredGuest): Promise<string> {
+  const families = guest.family ? await ensureNames("families", [guest.family], eventId) : null;
+  const hosts = guest.host ? await ensureNames("hosts", [guest.host], eventId) : null;
   const { data, error } = await supabase
     .from("guests")
     .insert({
@@ -180,7 +182,9 @@ export async function addGuestRow(eventId: string, guest: StoredGuest): Promise<
       invite_physical: guest.physical,
       invite_personal: guest.personal,
       is_child: guest.child,
-      is_primary: false,
+      is_primary: Boolean(guest.family) && guest.family === guest.name,
+      family_id: guest.family && families ? (families.get(guest.family) ?? null) : null,
+      host_id: guest.host && hosts ? (hosts.get(guest.host) ?? null) : null,
     })
     .select("updated_at")
     .single();
