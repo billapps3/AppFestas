@@ -457,14 +457,14 @@ function FestaApp() {
       });
   };
 
-  const addGuest = () => {
-    const name = newGuest.trim();
-    if (!name) return;
+  const addGuestNamed = (name: string, opts?: { family?: string; host?: string }) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
     const eventId = session.activeEventId;
     if (!eventId) return;
     const guest: Guest = {
         id: Math.max(0, ...guests.map((item) => item.id)) + 1,
-        name,
+        name: trimmed,
         status: "Aguardando",
         virtual: false,
         virtualAt: "",
@@ -472,8 +472,8 @@ function FestaApp() {
         physical: false,
         personal: false,
         child: false,
-        family: "",
-        host: "",
+        family: opts?.family ?? "",
+        host: opts?.host ?? "",
         updatedAt: "",
       };
     setSaveState("saving");
@@ -483,6 +483,10 @@ function FestaApp() {
         setSaveState("saved");
       })
       .catch(() => setSaveState("error"));
+  };
+
+  const addGuest = () => {
+    addGuestNamed(newGuest);
     setNewGuest("");
     setShowGuestForm(false);
   };
@@ -732,6 +736,7 @@ function FestaApp() {
               newGuest={newGuest}
               setNewGuest={setNewGuest}
               addGuest={addGuest}
+              onAddFamilyMember={addGuestNamed}
               onStatus={changeGuestStatus}
               onUpdate={updateGuest}
               onDelete={deleteGuest}
@@ -1836,6 +1841,7 @@ type GuestsViewProps = {
   newGuest: string;
   setNewGuest: (value: string) => void;
   addGuest: () => void;
+  onAddFamilyMember: (name: string, opts?: { family?: string; host?: string }) => void;
   onStatus: (id: number, status: GuestStatus) => void;
   onUpdate: (id: number, patch: Partial<Guest>) => void;
   onDelete: (id: number) => void;
@@ -1856,6 +1862,7 @@ function GuestsView({
   newGuest,
   setNewGuest,
   addGuest,
+  onAddFamilyMember,
   onStatus,
   onUpdate,
   onDelete,
@@ -1876,22 +1883,32 @@ function GuestsView({
   const [reportOpen, setReportOpen] = useState(false);
 
   const sections = useMemo(() => {
+    // Declinados não somem, mas afundam para o fim de cada lista — não atrapalham
+    // quem está buscando/rolando pelos convidados que ainda importam.
+    const byDeclined = <T extends { status: GuestStatus }>(list: T[]) =>
+      [...list].sort((a, b) => Number(a.status === "Declinado") - Number(b.status === "Declinado"));
+
     const groups = [...hosts, "Sem responsável"];
     return groups
       .map((host) => {
         const people = guests.filter((guest) =>
           host === "Sem responsável" ? !guest.host : guest.host === host,
         );
-        const families = Array.from(
-          new Set(people.filter((guest) => guest.family).map((guest) => guest.family)),
-        )
-          .sort((a, b) => a.localeCompare(b, "pt-BR"))
-          .map((family) => ({
-            family,
-            principal: people.find((guest) => guest.name === family),
-            members: people.filter((guest) => guest.family === family && guest.name !== family),
-          }));
-        const singles = people.filter((guest) => !guest.family);
+        const families = byDeclined(
+          Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
+            .sort((a, b) => a.localeCompare(b, "pt-BR"))
+            .map((family) => {
+              const principal = people.find((guest) => guest.name === family);
+              const members = byDeclined(
+                people.filter((guest) => guest.family === family && guest.name !== family),
+              );
+              const allDeclined = [principal, ...members].every(
+                (guest) => !guest || guest.status === "Declinado",
+              );
+              return { family, principal, members, status: allDeclined ? "Declinado" : "Aguardando" } as const;
+            }),
+        );
+        const singles = byDeclined(people.filter((guest) => !guest.family));
         return { host, people, families, singles };
       })
       .filter((section) => section.people.length > 0);
@@ -2114,6 +2131,11 @@ function GuestsView({
                         onDelete={onDelete}
                       />
                     ))}
+                    <AddFamilyMemberRow
+                      family={family}
+                      host={section.host === "Sem responsável" ? "" : section.host}
+                      onAdd={onAddFamilyMember}
+                    />
                   </div>
                 </div>
               );
@@ -2147,6 +2169,60 @@ function GuestsView({
           Nenhum convidado encontrado com esses filtros.
         </div>
       )}
+    </div>
+  );
+}
+
+function AddFamilyMemberRow({
+  family,
+  host,
+  onAdd,
+}: {
+  family: string;
+  host: string;
+  onAdd: (name: string, opts?: { family?: string; host?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+
+  const submit = () => {
+    if (!name.trim()) return;
+    onAdd(name, { family, host });
+    setName("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center gap-2 p-3 text-left text-[12px] text-muted-foreground transition hover:bg-muted/25 hover:text-foreground"
+      >
+        <Plus className="size-3.5" />
+        Adicionar pessoa desta família
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 p-3">
+      <Input
+        autoFocus
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") submit();
+          if (event.key === "Escape") setOpen(false);
+        }}
+        placeholder={`Nome — entra direto em "${family}"`}
+        className="h-8 text-xs"
+      />
+      <Button size="sm" className="h-8 shrink-0" onClick={submit}>
+        Adicionar
+      </Button>
+      <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => setOpen(false)}>
+        Cancelar
+      </Button>
     </div>
   );
 }
