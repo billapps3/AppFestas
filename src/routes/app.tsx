@@ -327,19 +327,19 @@ function FestaApp() {
       }));
     return [...families, ...individuals].sort((a, b) => a.deadline.localeCompare(b.deadline));
   }, [familyInvites, guests]);
-  // Status is deliberately left out here: it only hides individual rows inside
-  // GuestsView, never the family/host groups themselves — otherwise filtering to
-  // "Confirmado" would hide the "add person" control for any family with nobody
-  // confirmed yet.
+  // Search and status are deliberately left out here — GuestsView applies them
+  // at family granularity (a name match anywhere in a family reveals everyone
+  // in it) and at row granularity (status only hides non-matching rows), so
+  // neither ever hides a family's card/add-button just because the specific
+  // person you typed isn't the one on screen.
   const filteredGuests = useMemo(
     () =>
       guests.filter(
         (guest) =>
-          guest.name.toLowerCase().includes(search.toLowerCase()) &&
-          (hostFilter === "Todos" ||
-            (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter)),
+          hostFilter === "Todos" ||
+          (hostFilter === "Sem responsável" ? !guest.host : guest.host === hostFilter),
       ),
-    [guests, search, hostFilter],
+    [guests, hostFilter],
   );
 
   const changeTaskStatus = (id: number) => {
@@ -1916,14 +1916,24 @@ function GuestsView({
     const byDeclined = <T extends { status: GuestStatus }>(list: T[]) =>
       [...list].sort((a, b) => Number(a.status === "Declinado") - Number(b.status === "Declinado"));
 
+    const term = search.trim().toLowerCase();
+    const matchesSearch = (guest: Guest) => !term || guest.name.toLowerCase().includes(term);
+
     const groups = [...hosts, "Sem responsável"];
     return groups
       .map((host) => {
         const people = guests.filter((guest) =>
           host === "Sem responsável" ? !guest.host : guest.host === host,
         );
+        // A busca acha a família pelo nome de qualquer um dela — mas, uma vez
+        // achada, mostra todo mundo, não só quem bateu com o termo digitado.
         const families = byDeclined(
           Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
+            .filter((family) => {
+              if (!term) return true;
+              const inFamily = people.filter((guest) => guest.family === family);
+              return family.toLowerCase().includes(term) || inFamily.some(matchesSearch);
+            })
             .sort((a, b) => a.localeCompare(b, "pt-BR"))
             .map((family) => {
               const principal = people.find((guest) => guest.name === family);
@@ -1936,11 +1946,11 @@ function GuestsView({
               return { family, principal, members, status: allDeclined ? "Declinado" : "Aguardando" } as const;
             }),
         );
-        const singles = byDeclined(people.filter((guest) => !guest.family));
+        const singles = byDeclined(people.filter((guest) => !guest.family && matchesSearch(guest)));
         return { host, people, families, singles };
       })
-      .filter((section) => section.people.length > 0);
-  }, [guests]);
+      .filter((section) => section.families.length > 0 || section.singles.length > 0);
+  }, [guests, search]);
 
   // Só esconde a linha da pessoa — o card da família/grupo e o botão de
   // adicionar continuam visíveis mesmo quando ninguém ali bate com o filtro.
