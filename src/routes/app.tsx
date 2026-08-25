@@ -1993,20 +1993,27 @@ function GuestsView({
         allGuests.filter((guest) => guest.child || guest.status === "Declinado").length,
     },
     {
-      label: "Mulheres confirmadas (+10 anos)",
+      // Referência p/ brindes: os três itens abaixo sempre somam este total.
+      label: "Confirmados acima de 10 anos",
+      value: allGuests.filter((guest) => guest.status === "Confirmado" && !guest.child).length,
+    },
+    {
+      label: "· Mulheres confirmadas",
       value: allGuests.filter(
         (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "F",
       ).length,
     },
     {
-      label: "Homens confirmados (+10 anos)",
+      label: "· Homens confirmados",
       value: allGuests.filter(
         (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "M",
       ).length,
     },
     {
-      label: "Sexo não informado",
-      value: allGuests.filter((guest) => !guest.gender).length,
+      label: "· Sexo ainda não informado",
+      value: allGuests.filter(
+        (guest) => guest.status === "Confirmado" && !guest.child && !guest.gender,
+      ).length,
     },
   ];
 
@@ -2466,17 +2473,22 @@ function GuestRow({
           >
             <Baby className="size-3" />
           </button>
-          <select
-            aria-label={`Sexo de ${guest.name}`}
-            value={guest.gender}
-            onChange={(event) => onUpdate(guest.id, { gender: event.target.value as Guest["gender"] })}
-            title="Sexo (usado nas estatísticas de brindes)"
-            className={`h-8 rounded-md border px-1.5 text-[11px] font-medium outline-none lg:size-7 lg:px-0 lg:text-center ${guest.gender ? "border-border bg-background" : "border-dashed border-border bg-muted text-muted-foreground/60"}`}
+          <button
+            onClick={() => onUpdate(guest.id, { gender: guest.gender === "F" ? "" : "F" })}
+            aria-pressed={guest.gender === "F"}
+            title="Mulher (usado nas estatísticas de brindes)"
+            className={`grid size-8 place-items-center rounded-md text-[11px] font-semibold lg:size-7 ${guest.gender === "F" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}
           >
-            <option value="">—</option>
-            <option value="F">F</option>
-            <option value="M">M</option>
-          </select>
+            F
+          </button>
+          <button
+            onClick={() => onUpdate(guest.id, { gender: guest.gender === "M" ? "" : "M" })}
+            aria-pressed={guest.gender === "M"}
+            title="Homem (usado nas estatísticas de brindes)"
+            className={`grid size-8 place-items-center rounded-md text-[11px] font-semibold lg:size-7 ${guest.gender === "M" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/40"}`}
+          >
+            M
+          </button>
         </div>
 
         <select
