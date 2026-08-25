@@ -1972,45 +1972,35 @@ function GuestsView({
   }, [guests, search, statusFilter]);
 
   const children = allGuests.filter((guest) => guest.child).length;
-  const declined = allGuests.filter((guest) => guest.status === "Declinado").length;
+  // Confirmados/Aguardando/Declinados abaixo são sempre "acima de 10 anos" — é
+  // isso que interessa pra pagamento e brindes. Crianças ficam num card à
+  // parte, informativo, e nunca entram nessas contagens.
+  const adultsByStatus = (status: GuestStatus) =>
+    allGuests.filter((guest) => guest.status === status && !guest.child).length;
+  const confirmedAdults = adultsByStatus("Confirmado");
+  const waitingAdults = adultsByStatus("Aguardando");
   const stats = [
     { label: "Total de convidados", value: allGuests.length },
-    {
-      label: "Confirmados",
-      value: allGuests.filter((guest) => guest.status === "Confirmado").length,
-    },
-    {
-      label: "Aguardando",
-      value: allGuests.filter((guest) => guest.status === "Aguardando").length,
-    },
-    { label: "Declinados", value: declined },
+    { label: "Confirmados", value: confirmedAdults },
+    { label: "Aguardando", value: waitingAdults },
+    { label: "Declinados", value: adultsByStatus("Declinado") },
     { label: "Crianças até 10 anos", value: children },
     { label: "Sem responsável", value: allGuests.filter((guest) => !guest.host).length },
+    { label: "Total pagantes", value: confirmedAdults + waitingAdults },
     {
-      label: "Saldo de convites (pagantes)",
-      value:
-        allGuests.length -
-        allGuests.filter((guest) => guest.child || guest.status === "Declinado").length,
-    },
-    {
-      // Referência p/ brindes: os três itens abaixo sempre somam este total.
-      label: "Confirmados acima de 10 anos",
-      value: allGuests.filter((guest) => guest.status === "Confirmado" && !guest.child).length,
-    },
-    {
-      label: "· Mulheres confirmadas",
+      label: "Mulheres confirmadas",
       value: allGuests.filter(
         (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "F",
       ).length,
     },
     {
-      label: "· Homens confirmados",
+      label: "Homens confirmados",
       value: allGuests.filter(
         (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "M",
       ).length,
     },
     {
-      label: "· Sexo ainda não informado",
+      label: "Sexo ainda não informado",
       value: allGuests.filter(
         (guest) => guest.status === "Confirmado" && !guest.child && !guest.gender,
       ).length,
