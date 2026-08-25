@@ -1917,7 +1917,8 @@ function GuestsView({
       [...list].sort((a, b) => Number(a.status === "Declinado") - Number(b.status === "Declinado"));
 
     const term = search.trim().toLowerCase();
-    const matchesSearch = (guest: Guest) => !term || guest.name.toLowerCase().includes(term);
+    const matchesSearchName = (guest: Guest) => !term || guest.name.toLowerCase().includes(term);
+    const matchesStatus = (guest: Guest) => statusFilter === "Todos" || guest.status === statusFilter;
 
     const groups = [...hosts, "Sem responsável"];
     return groups
@@ -1925,14 +1926,18 @@ function GuestsView({
         const people = guests.filter((guest) =>
           host === "Sem responsável" ? !guest.host : guest.host === host,
         );
-        // A busca acha a família pelo nome de qualquer um dela — mas, uma vez
-        // achada, mostra todo mundo, não só quem bateu com o termo digitado.
+        // A busca acha a família pelo nome de qualquer um dela e, se achou,
+        // mostra todo mundo dela (não só quem bateu com o termo digitado).
+        // O status, ao contrário, é exclusivo: só entram as pessoas que
+        // realmente têm aquele status — se ninguém da família bater, a
+        // família some da lista (use "Adicionar convidado" no topo pra
+        // colocar alguém numa família que o filtro escondeu).
         const families = byDeclined(
           Array.from(new Set(people.filter((guest) => guest.family).map((guest) => guest.family)))
             .filter((family) => {
               if (!term) return true;
               const inFamily = people.filter((guest) => guest.family === family);
-              return family.toLowerCase().includes(term) || inFamily.some(matchesSearch);
+              return family.toLowerCase().includes(term) || inFamily.some(matchesSearchName);
             })
             .sort((a, b) => a.localeCompare(b, "pt-BR"))
             .map((family) => {
@@ -1943,18 +1948,26 @@ function GuestsView({
               const allDeclined = [principal, ...members].every(
                 (guest) => !guest || guest.status === "Declinado",
               );
-              return { family, principal, members, status: allDeclined ? "Declinado" : "Aguardando" } as const;
-            }),
+              const visiblePrincipal = principal && matchesStatus(principal) ? principal : undefined;
+              const visibleMembers = members.filter(matchesStatus);
+              return {
+                family,
+                principal,
+                members,
+                visiblePrincipal,
+                visibleMembers,
+                status: allDeclined ? "Declinado" : "Aguardando",
+              } as const;
+            })
+            .filter((f) => f.visiblePrincipal || f.visibleMembers.length > 0),
         );
-        const singles = byDeclined(people.filter((guest) => !guest.family && matchesSearch(guest)));
+        const singles = byDeclined(
+          people.filter((guest) => !guest.family && matchesSearchName(guest) && matchesStatus(guest)),
+        );
         return { host, people, families, singles };
       })
       .filter((section) => section.families.length > 0 || section.singles.length > 0);
-  }, [guests, search]);
-
-  // Só esconde a linha da pessoa — o card da família/grupo e o botão de
-  // adicionar continuam visíveis mesmo quando ninguém ali bate com o filtro.
-  const matchesStatus = (guest: Guest) => statusFilter === "Todos" || guest.status === statusFilter;
+  }, [guests, search, statusFilter]);
 
   const children = allGuests.filter((guest) => guest.child).length;
   const declined = allGuests.filter((guest) => guest.status === "Declinado").length;
@@ -2131,9 +2144,7 @@ function GuestsView({
           </div>
 
           <div className="space-y-4 p-4 sm:p-5">
-            {section.families.map(({ family, principal, members }) => {
-              const visiblePrincipal = principal && matchesStatus(principal) ? principal : undefined;
-              const visibleMembers = members.filter(matchesStatus);
+            {section.families.map(({ family, principal, members, visiblePrincipal, visibleMembers }) => {
               const invite = familyInvites[family];
               const isGroup = isGroupFamily(family);
               const waiting = [principal, ...members].filter(
@@ -2223,11 +2234,6 @@ function GuestsView({
                         onDelete={onDelete}
                       />
                     ))}
-                    {statusFilter !== "Todos" && !visiblePrincipal && visibleMembers.length === 0 && (
-                      <div className="p-3 text-[11px] text-muted-foreground">
-                        Ninguém aqui está "{statusFilter}" no momento.
-                      </div>
-                    )}
                     <AddFamilyMemberRow
                       family={family}
                       host={section.host === "Sem responsável" ? "" : section.host}
@@ -2244,7 +2250,7 @@ function GuestsView({
                   Convidados individuais
                 </div>
                 <div className="divide-y divide-border">
-                  {section.singles.filter(matchesStatus).map((guest) => (
+                  {section.singles.map((guest) => (
                     <GuestRow
                       key={guest.id}
                       guest={guest}
