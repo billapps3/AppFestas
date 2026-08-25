@@ -329,6 +329,7 @@ export type Database = {
           created_at: string
           event_id: string
           family_id: string | null
+          gender: string | null
           host_id: string | null
           id: string
           invite_personal: boolean
@@ -349,6 +350,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           family_id?: string | null
+          gender?: string | null
           host_id?: string | null
           id?: string
           invite_personal?: boolean
@@ -369,6 +371,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           family_id?: string | null
+          gender?: string | null
           host_id?: string | null
           id?: string
           invite_personal?: boolean

@@ -152,6 +152,7 @@ type Guest = {
   physical: boolean;
   personal: boolean;
   child: boolean;
+  gender: "F" | "M" | "";
   family: string;
   host: string;
   updatedAt: string;
@@ -479,6 +480,7 @@ function FestaApp() {
         physical: false,
         personal: false,
         child: false,
+        gender: "",
         family: opts?.family ?? "",
         host: opts?.host ?? "",
         updatedAt: "",
@@ -1990,6 +1992,22 @@ function GuestsView({
         allGuests.length -
         allGuests.filter((guest) => guest.child || guest.status === "Declinado").length,
     },
+    {
+      label: "Mulheres confirmadas (+10 anos)",
+      value: allGuests.filter(
+        (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "F",
+      ).length,
+    },
+    {
+      label: "Homens confirmados (+10 anos)",
+      value: allGuests.filter(
+        (guest) => guest.status === "Confirmado" && !guest.child && guest.gender === "M",
+      ).length,
+    },
+    {
+      label: "Sexo não informado",
+      value: allGuests.filter((guest) => !guest.gender).length,
+    },
   ];
 
   return (
@@ -2448,6 +2466,17 @@ function GuestRow({
           >
             <Baby className="size-3" />
           </button>
+          <select
+            aria-label={`Sexo de ${guest.name}`}
+            value={guest.gender}
+            onChange={(event) => onUpdate(guest.id, { gender: event.target.value as Guest["gender"] })}
+            title="Sexo (usado nas estatísticas de brindes)"
+            className={`h-8 rounded-md border px-1.5 text-[11px] font-medium outline-none lg:size-7 lg:px-0 lg:text-center ${guest.gender ? "border-border bg-background" : "border-dashed border-border bg-muted text-muted-foreground/60"}`}
+          >
+            <option value="">—</option>
+            <option value="F">F</option>
+            <option value="M">M</option>
+          </select>
         </div>
 
         <select

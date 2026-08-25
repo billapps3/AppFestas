@@ -23,6 +23,7 @@ export type StoredGuest = {
   physical: boolean;
   personal: boolean;
   child: boolean;
+  gender: "F" | "M" | "";
   family: string;
   host: string;
   deadline: string;
@@ -64,6 +65,7 @@ export async function loadMirellaState(eventId: string): Promise<MirellaState> {
     physical: row.invite_physical,
     personal: row.invite_personal,
     child: typeof row.age === "number" && row.age > 10 ? false : row.is_child ?? false,
+    gender: row.gender === "F" || row.gender === "M" ? row.gender : "",
     deadline: row.rsvp_deadline ?? "",
     family: (row.family_id && families.byId.get(row.family_id)) || "",
     host: (row.host_id && hosts.byId.get(row.host_id)) || "",
@@ -143,6 +145,7 @@ export async function updateGuestFields(
   if (patch.physical !== undefined) row.invite_physical = patch.physical;
   if (patch.personal !== undefined) row.invite_personal = patch.personal;
   if (patch.child !== undefined) row.is_child = patch.child;
+  if (patch.gender !== undefined) row.gender = patch.gender || null;
 
   if (patch.family !== undefined) {
     const families = await ensureNames("families", patch.family ? [patch.family] : [], eventId);
