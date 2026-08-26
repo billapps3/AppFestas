@@ -29,10 +29,16 @@ export function TeamPanel({ eventId, canManage, currentUserId }: { eventId: stri
       ? await supabase.from("profiles").select("id, display_name, email").in("id", ids)
       : { data: [] as { id: string; display_name: string | null; email: string | null }[] };
     setMembers(
-      (memberRows ?? []).map((row) => {
-        const profile = (profiles ?? []).find((item) => item.id === row.user_id);
-        return { userId: row.user_id, role: row.role as EventRole, name: profile?.display_name ?? "Perfil", email: profile?.email ?? null };
-      }),
+      (memberRows ?? [])
+        // Sem perfil = sem conta de verdade por trás (convite nunca aceito,
+        // conta apagada, resíduo de dado antigo). Não faz sentido mostrar um
+        // card vazio repetido — se acontecer de novo, alguém some da lista
+        // silenciosamente em vez de aparecer como "Perfil" genérico.
+        .filter((row) => (profiles ?? []).some((item) => item.id === row.user_id))
+        .map((row) => {
+          const profile = (profiles ?? []).find((item) => item.id === row.user_id)!;
+          return { userId: row.user_id, role: row.role as EventRole, name: profile.display_name ?? "Sem nome", email: profile.email };
+        }),
     );
     setInvites((inviteRows ?? []).map((row) => ({ id: row.id, email: row.email, role: row.role as EventRole, expiresAt: row.expires_at })));
   }, [eventId]);
