@@ -294,7 +294,6 @@ function FestaApp() {
   }, [saveState]);
 
   const completedTasks = tasks.filter((task) => task.status === "Concluído").length;
-  const confirmedGuests = guests.filter((guest) => guest.status === "Confirmado").length;
   const virtualSent = guests.filter((guest) =>
     guest.family && !isGroupFamily(guest.family)
       ? familyInvites[guest.family]?.virtual
@@ -714,7 +713,6 @@ function FestaApp() {
               <Overview
                 daysLeft={daysLeft}
                 completedTasks={completedTasks}
-                confirmedGuests={confirmedGuests}
                 totalGuests={guests.length}
                 virtualSent={virtualSent}
                 tasks={tasks}
@@ -793,7 +791,6 @@ type RsvpPending = { family: string; deadline: string; waiting: number };
 function Overview({
   daysLeft,
   completedTasks,
-  confirmedGuests,
   totalGuests,
   virtualSent,
   tasks,
@@ -805,7 +802,6 @@ function Overview({
 }: {
   daysLeft: number;
   completedTasks: number;
-  confirmedGuests: number;
   totalGuests: number;
   virtualSent: number;
   tasks: Task[];
@@ -816,13 +812,14 @@ function Overview({
   canFinance: boolean;
 }) {
   const upcoming = tasks.filter((task) => task.status !== "Concluído").slice(0, 4);
-  const confirmed = guests.filter((guest) => guest.status === "Confirmado").length;
-  const declined = guests.filter((guest) => guest.status === "Declinado").length;
-  const waiting = guests.filter((guest) => guest.status === "Aguardando").length;
+  // Confirmados/Aguardando/Declinados aqui são sempre "acima de 10 anos" — o
+  // mesmo critério da aba Convidados, pra não misturar quem paga com quem não
+  // paga. Crianças ficam à parte, informativas, contadas uma única vez.
+  const confirmed = guests.filter((guest) => guest.status === "Confirmado" && !guest.child).length;
+  const declined = guests.filter((guest) => guest.status === "Declinado" && !guest.child).length;
+  const waiting = guests.filter((guest) => guest.status === "Aguardando" && !guest.child).length;
   const children = guests.filter((guest) => guest.child).length;
-  // uma pessoa nunca é descontada duas vezes (criança que também declinou)
-  const nonPaying = guests.filter((guest) => guest.child || guest.status === "Declinado").length;
-  const inviteBalance = totalGuests - nonPaying;
+  const inviteBalance = confirmed + waiting;
 
   const expenses = useExpenses();
   const suppliers = useSuppliers();
@@ -915,9 +912,9 @@ function Overview({
         />
         <Metric
           icon={Users}
-          label="Convidados confirmados"
-          value={`${confirmedGuests}`}
-          detail={`de ${totalGuests} convidados`}
+          label="Confirmados (+10 anos)"
+          value={`${confirmed}`}
+          detail={`de ${totalGuests} convidados no total`}
           tone="gold"
           onClick={() => onView("guests")}
         />
@@ -950,15 +947,19 @@ function Overview({
         />
         <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {[
-            { label: "Total de convidados", value: totalGuests, hint: "lista geral" },
-            { label: "Confirmados", value: confirmed, hint: "vão comparecer" },
-            { label: "Aguardando", value: waiting, hint: "sem resposta" },
-            { label: "Declinados", value: declined, hint: "avisaram que não vão" },
-            { label: "Crianças até 10 anos", value: children, hint: "não pagantes" },
+            { label: "Total de convidados", value: totalGuests, hint: "lista geral, todas as idades" },
+            { label: "Confirmados", value: confirmed, hint: "vão comparecer · acima de 10 anos" },
+            { label: "Aguardando", value: waiting, hint: "sem resposta · acima de 10 anos" },
+            { label: "Declinados", value: declined, hint: "avisaram que não vão · acima de 10 anos" },
             {
-              label: "Saldo de convites (pagantes)",
+              label: "Crianças até 10 anos",
+              value: children,
+              hint: "não pagantes · à parte, não entra nos números ao lado",
+            },
+            {
+              label: "Total pagantes",
               value: inviteBalance,
-              hint: `${totalGuests} − ${children} crianças − ${declined} declinados`,
+              hint: `Confirmados (${confirmed}) + Aguardando (${waiting}), acima de 10 anos`,
             },
           ].map((item) => (
             <div key={item.label} className="rounded-xl border border-border bg-background p-4">
@@ -1012,16 +1013,16 @@ function Overview({
               </div>
             </div>
             <div className="space-y-3 text-xs">
-              <Legend color="dot-confirmed" label="Confirmados" value={confirmed} />
-              <Legend color="dot-waiting" label="Aguardando" value={waiting} />
-              <Legend color="dot-declined" label="Declinados" value={declined} />
-              <Legend color="bg-muted-foreground/30" label="Crianças" value={children} />
+              <Legend color="dot-confirmed" label="Confirmados (+10)" value={confirmed} />
+              <Legend color="dot-waiting" label="Aguardando (+10)" value={waiting} />
+              <Legend color="dot-declined" label="Declinados (+10)" value={declined} />
+              <Legend color="bg-muted-foreground/30" label="Crianças até 10" value={children} />
             </div>
           </div>
           <div className="mt-7 border-t border-border pt-4 text-xs text-muted-foreground">
-            Saldo de convites:{" "}
-            <span className="font-semibold text-foreground">{inviteBalance}</span> · total geral
-            menos crianças até 10 anos e declinados.
+            Total pagantes:{" "}
+            <span className="font-semibold text-foreground">{inviteBalance}</span> · Confirmados +
+            Aguardando, sempre acima de 10 anos (criança não paga e fica de fora dessa conta).
           </div>
         </section>
       </div>

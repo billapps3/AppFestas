@@ -128,14 +128,20 @@ export function GuestReportDialog({
 
   const sections = buildSections(guests, hosts);
   const children = guests.filter((guest) => guest.child).length;
-  const declined = count(guests, "Declinado");
+  // Confirmados/Aguardando/Declinados são sempre acima de 10 anos, igual no
+  // resto do app — criança fica só no card "Crianças até 10", à parte.
+  const adultsByStatus = (status: ReportGuest["status"]) =>
+    guests.filter((guest) => guest.status === status && !guest.child).length;
+  const confirmedAdults = adultsByStatus("Confirmado");
+  const waitingAdults = adultsByStatus("Aguardando");
+  const declinedAdults = adultsByStatus("Declinado");
   const metrics = [
     { label: "Convidados", value: guests.length },
-    { label: "Confirmados", value: count(guests, "Confirmado") },
-    { label: "Aguardando", value: count(guests, "Aguardando") },
-    { label: "Declinados", value: declined },
+    { label: "Confirmados", value: confirmedAdults },
+    { label: "Aguardando", value: waitingAdults },
+    { label: "Declinados", value: declinedAdults },
     { label: "Crianças até 10", value: children },
-    { label: "Saldo pagantes", value: guests.length - children - declined, highlight: true },
+    { label: "Total pagantes", value: confirmedAdults + waitingAdults, highlight: true },
   ];
 
   const capture = async () => {
@@ -399,7 +405,7 @@ export function GuestReportDialog({
             </div>
 
             <div style={{ marginTop: 6, fontSize: 8.5, color: soft }}>
-              Saldo pagantes = convidados − crianças até 10 anos − declinados. Legenda:{" "}
+              Total pagantes = confirmados + aguardando, sempre acima de 10 anos. Legenda:{" "}
               <span style={{ color: markColor.Confirmado }}>✓ confirmado</span> ·{" "}
               <span style={{ color: markColor.Aguardando }}>• aguardando</span> ·{" "}
               <span style={{ color: markColor.Declinado }}>✕ declinado</span>
